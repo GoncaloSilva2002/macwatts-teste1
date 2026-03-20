@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geocoding Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --bg: #eef3f7;
+      --card: #ffffff;
+      --primary: #14b8a6;
+      --primary-strong: #0f766e;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Manrope", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #ebfffb 0%, #d8f2ef 100%);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 18px;
+    }
+
+    .map-shell {
+      position: relative;
+      width: calc(100vw - 36px);
+      height: calc(100dvh - 36px);
+      margin: 0 auto;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #cfd7e3;
+      background: #f9fafb;
+    }
+
+    form {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .address-wrap {
+      position: relative;
+      flex: 1 1 320px;
+    }
+
+    input {
+      flex: 1 1 320px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      font-size: 0.95rem;
+    }
+
+    .address-wrap input {
+      width: 100%;
+    }
+
+    .suggestions {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.16);
+      max-height: 220px;
+      overflow-y: auto;
+      z-index: 1100;
+      display: none;
+    }
+
+    .suggestions.open {
+      display: block;
+    }
+
+    .suggestion-item {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: #111827;
+      text-align: left;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 0;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item.active {
+      background: #ecfdf8;
+      color: #0f766e;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      background: var(--primary);
+      color: #fff;
+      padding: 11px 18px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: var(--primary-strong);
+    }
+
+    button:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      opacity: 0.72;
+    }
+
+    #message {
+      min-height: 18px;
+      font-size: 0.9rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    #map {
+      position: relative;
+      width: 100%;
+      height: calc(100% - 132px);
+      overflow: hidden;
+    }
+
+    .top-bar {
+      height: 72px;
+      background: rgba(255, 255, 255, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      gap: 12px;
+    }
+
+    .brand {
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: 0.2px;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .brand span {
+      color: var(--primary);
+    }
+
+    .steps-bar {
+      height: 60px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .step-track {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      flex: 1 1 auto;
+    }
+
+    .step {
+      position: relative;
+      text-align: center;
+      color: #9ca3af;
+      font-weight: 700;
+      font-size: 0.93rem;
+      padding-top: 18px;
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #d1d5db;
+      background: #fff;
+    }
+
+    .step.active {
+      color: var(--primary-strong);
+    }
+
+    .step.active::before {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .step.done {
+      color: #0f766e;
+    }
+
+    .step.done::before {
+      border-color: #0f766e;
+      background: #0f766e;
+    }
+
+    .roof-panel {
+      position: absolute;
+      top: 90px;
+      left: 14px;
+      z-index: 800;
+      width: min(390px, calc(100% - 28px));
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .roof-panel h2 {
+      margin: 0;
+      font-size: 2rem;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+    }
+
+    .roof-panel p {
+      margin: 0;
+      color: #4b5563;
+      font-size: 1rem;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .roof-meta {
+      display: grid;
+      gap: 6px;
+      font-size: 0.92rem;
+      color: #374151;
+      border-top: 1px solid #e5e7eb;
+      border-bottom: 1px solid #e5e7eb;
+      padding: 10px 0;
+    }
+
+    .solar-legend {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      z-index: 700;
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      font-size: 0.84rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #1f2937;
+      font-weight: 600;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+      flex: 0 0 12px;
+    }
+
+    .panel-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .panel-row label {
+      font-weight: 600;
+    }
+
+    .panel-row input {
+      max-width: 240px;
+      padding: 8px 10px;
+    }
+
+    .btn-secondary {
+      background: #0f766e;
+    }
+
+    #drawRoofBtn.active {
+      background: #0f766e;
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    #drawRoofBtn,
+    #clearRoofBtn,
+    #nextStepBtn {
+      flex: 1 1 160px;
+    }
+
+    .roof-sun-label {
+      background: rgba(18, 24, 38, 0.85);
+      color: #ffffff;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 8px;
+      }
+
+      .map-shell {
+        width: calc(100vw - 16px);
+        height: calc(100dvh - 16px);
+      }
+
+      .top-bar {
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px;
+      }
+
+      .brand {
+        font-size: 1rem;
+      }
+
+      form {
+        flex-wrap: wrap;
+      }
+
+      input {
+        flex: 1 1 100%;
+      }
+
+      #map {
+        height: calc(100% - 172px);
+      }
+
+      .steps-bar {
+        height: 100px;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 10px;
+      }
+
+      .step {
+        font-size: 0.78rem;
+      }
+
+      .roof-panel {
+        width: calc(100% - 20px);
+        top: 82px;
+        left: 10px;
+        padding: 14px;
+      }
+
+      .roof-panel h2 {
+        font-size: 1.45rem;
+      }
+    }
+  </style>
+</head>
+<body>
+<main class="map-shell">
+  <div class="top-bar">
+    <div class="brand">Macwatts </div>
+    <div style="flex: 1 1 auto;">
+      <form id="geocode-form">
+        <div class="address-wrap">
+          <input
+            id="address"
+            type="text"
+            placeholder="Ex: Avenida da Liberdade, Lisboa"
+            autocomplete="off"
+            required
+          />
+          <div id="suggestions" class="suggestions" role="listbox" aria-label="Sugestões de morada"></div>
+        </div>
+        <button type="submit">Localizar</button>
+      </form>
+    </div>
+  </div>
+  <div class="steps-bar">
+    <div class="step-track" id="stepTrack">
+      <div class="step active" data-step="1">Sua Casa</div>
+      <div class="step" data-step="2">Questionário</div>
+      <div class="step" data-step="3">Contacto</div>
+      <div class="step" data-step="4">Próximo passo</div>
+    </div>
+  </div>
+  <div id="map">
+    <aside class="roof-panel" id="roofPanel">
+      <h2>Selecione a sua Casa</h2>
+      <p>Carregue no mapa para ajustar o ponto da casa e desenhe o contorno do telhado para calcular área e radiação solar.</p>
+      <div class="roof-meta">
+        <div id="houseInfo">Casa selecionada: nenhuma. Clica no mapa para mudar o pino.</div>
+        <div id="sunInfo">Sol no telhado: sem dados.</div>
+      </div>
+      <div class="actions">
+        <button id="drawRoofBtn" type="button">Desenhar telhado</button>
+        <button id="clearRoofBtn" type="button" class="btn-secondary">Limpar telhado</button>
+        <button id="nextStepBtn" type="button">Continuar</button>
+      </div>
+      <div id="message"></div>
+    </aside>
+    <div class="solar-legend">
+      <span class="legend-item"><span class="legend-color" style="background: rgb(148, 163, 184);"></span>Baixa (&lt;200 W/m²)</span>
+      <span class="legend-item"><span class="legend-color" style="background: rgb(20, 184, 166);"></span>Boa (200-599 W/m²)</span>
+      <span class="legend-item"><span class="legend-color" style="background: rgb(13, 148, 136);"></span>Alta (&ge;600 W/m²)</span>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+<script>
+  const form = document.getElementById("geocode-form");
+  const addressInput = document.getElementById("address");
+  const suggestionsEl = document.getElementById("suggestions");
+  const message = document.getElementById("message");
+  const houseInfo = document.getElementById("houseInfo");
+  const sunInfo = document.getElementById("sunInfo");
+  const drawRoofBtn = document.getElementById("drawRoofBtn");
+  const clearRoofBtn = document.getElementById("clearRoofBtn");
+  const nextStepBtn = document.getElementById("nextStepBtn");
+  const roofPanel = document.getElementById("roofPanel");
+  const stepTrack = document.getElementById("stepTrack");
+
+  const map = L.map("map", {
+    zoomControl: true,
+    zoomSnap: 0.25,
+    zoomDelta: 0.25
+  }).setView([38.7223, -9.1393], 12);
+
+  const satellite = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    attribution: ""
+  }).addTo(map);
+
+  const streetLabels = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png", {
+    maxZoom: 20,
+    subdomains: "abcd",
+    opacity: 0.9,
+    attribution: ""
+  }).addTo(map);
+
+  let marker = null;
+  let roofPolygon = null;
+  let roofDraftLine = null;
+  let sunLabelMarker = null;
+  let selectedHouse = null;
+  let isDrawingRoof = false;
+  let roofPoints = [];
+  let roofAreaSqm = 0;
+  let selectedSuggestion = null;
+  let suggestionItems = [];
+  let suggestionIndex = -1;
+  let suggestionDebounce = null;
+  let suggestionAbort = null;
+
+  function clearSuggestions() {
+    suggestionsEl.innerHTML = "";
+    suggestionsEl.classList.remove("open");
+    suggestionItems = [];
+    suggestionIndex = -1;
+  }
+
+  function renderSuggestions(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      clearSuggestions();
+      return;
+    }
+
+    suggestionsEl.innerHTML = "";
+    suggestionItems = items;
+    suggestionIndex = -1;
+
+    items.forEach((item, index) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "suggestion-item";
+      option.setAttribute("role", "option");
+      option.textContent = item.displayName;
+      option.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        applyGeocodeResult(item);
+        selectedSuggestion = item;
+        addressInput.value = item.displayName;
+        clearSuggestions();
+      });
+      suggestionsEl.appendChild(option);
+    });
+
+    suggestionsEl.classList.add("open");
+  }
+
+  function updateSuggestionHighlight() {
+    const buttons = suggestionsEl.querySelectorAll(".suggestion-item");
+    buttons.forEach((button, index) => {
+      button.classList.toggle("active", index === suggestionIndex);
+    });
+  }
+
+  function normalizeGeocodeResult(result) {
+    return {
+      latitude: Number(result.latitude ?? result.lat),
+      longitude: Number(result.longitude ?? result.lon),
+      displayName: String(result.displayName ?? result.display_name ?? "")
+    };
+  }
+
+  async function fetchNominatimSuggestions(query) {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&q=${encodeURIComponent(query)}`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+    if (!response.ok) {
+      throw new Error("Não foi possível carregar sugestões.");
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data.map(normalizeGeocodeResult) : [];
+  }
+
+  async function fetchNominatimGeocode(address) {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&q=${encodeURIComponent(address)}`;
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+    if (!response.ok) {
+      throw new Error("Nao foi possivel obter coordenadas.");
+    }
+    const data = await response.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error("Nao foi possivel obter coordenadas.");
+    }
+    return normalizeGeocodeResult(data[0]);
+  }
+
+  async function fetchSuggestions(query) {
+    if (suggestionAbort) {
+      suggestionAbort.abort();
+    }
+    suggestionAbort = new AbortController();
+    const timeoutId = setTimeout(() => suggestionAbort.abort(), 8000);
+
+    try {
+      const response = await fetch(`/api/geocode/suggest?address=${encodeURIComponent(query)}`, {
+        signal: suggestionAbort.signal
+      });
+      if (!response.ok) {
+        throw new Error("Não foi possível carregar sugestões.");
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data.map(normalizeGeocodeResult) : [];
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error("Tempo esgotado ao carregar sugestões.");
+      }
+      return await fetchNominatimSuggestions(query);
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  function applyGeocodeResult(geocodeResult) {
+    const { latitude, longitude, displayName } = normalizeGeocodeResult(geocodeResult);
+
+    if (marker) {
+      marker.remove();
+    }
+
+    marker = L.marker([latitude, longitude], { draggable: true }).addTo(map);
+    marker.bindPopup(displayName).openPopup();
+    marker.on("dragend", async () => {
+      const pos = marker.getLatLng();
+      await applyAdjustedPoint(pos);
+    });
+
+    map.setView([latitude, longitude], 20);
+    message.textContent = "Clica no mapa para ajustar automaticamente o pino.";
+    selectedHouse = { lat: latitude, lng: longitude };
+  }
+
+  function toDegrees(rad) {
+    return rad * (180 / Math.PI);
+  }
+
+  function averageLatLng(points) {
+    const sum = points.reduce((acc, point) => {
+      return { lat: acc.lat + point.lat, lng: acc.lng + point.lng };
+    }, { lat: 0, lng: 0 });
+
+    return {
+      lat: sum.lat / points.length,
+      lng: sum.lng / points.length
+    };
+  }
+
+  function roofAreaSquareMeters(points) {
+    if (!points || points.length < 3) {
+      return 0;
+    }
+
+    const earthRadius = 6378137;
+    const meanLatRad = points.reduce((sum, point) => sum + point.lat, 0) / points.length * (Math.PI / 180);
+    const projected = points.map((point) => {
+      const latRad = point.lat * (Math.PI / 180);
+      const lngRad = point.lng * (Math.PI / 180);
+      return {
+        x: earthRadius * lngRad * Math.cos(meanLatRad),
+        y: earthRadius * latRad
+      };
+    });
+
+    let areaSum = 0;
+    for (let i = 0; i < projected.length; i += 1) {
+      const current = projected[i];
+      const next = projected[(i + 1) % projected.length];
+      areaSum += (current.x * next.y) - (next.x * current.y);
+    }
+
+    return Math.abs(areaSum) / 2;
+  }
+
+  function getSunAmountPercent(when, lat, lng) {
+    const sunPosition = SunCalc.getPosition(when, lat, lng);
+    const altitudeDeg = toDegrees(sunPosition.altitude);
+    if (altitudeDeg <= 0) {
+      return 0;
+    }
+    return Math.round(Math.sin(sunPosition.altitude) * 100);
+  }
+
+  function getEstimatedIrradiance(when, lat, lng) {
+    const sunPosition = SunCalc.getPosition(when, lat, lng);
+    if (sunPosition.altitude <= 0) {
+      return 0;
+    }
+    return Math.round(1000 * Math.sin(sunPosition.altitude));
+  }
+
+  function getDailyAverageIrradiance(when, lat, lng) {
+    const times = SunCalc.getTimes(when, lat, lng);
+    const sunrise = times.sunrise;
+    const sunset = times.sunset;
+
+    if (!(sunrise instanceof Date) || !(sunset instanceof Date) || Number.isNaN(sunrise.getTime()) || Number.isNaN(sunset.getTime())) {
+      return 0;
+    }
+
+    const start = sunrise.getTime();
+    const end = sunset.getTime();
+    if (end <= start) {
+      return 0;
+    }
+
+    const sampleStepMs = 15 * 60 * 1000;
+    let sum = 0;
+    let samples = 0;
+
+    for (let time = start; time <= end; time += sampleStepMs) {
+      sum += getEstimatedIrradiance(new Date(time), lat, lng);
+      samples += 1;
+    }
+
+    if (samples === 0) {
+      return 0;
+    }
+
+    return Math.round(sum / samples);
+  }
+
+  function lerpColor(from, to, ratio) {
+    const clamped = Math.max(0, Math.min(1, ratio));
+    return {
+      r: Math.round(from.r + (to.r - from.r) * clamped),
+      g: Math.round(from.g + (to.g - from.g) * clamped),
+      b: Math.round(from.b + (to.b - from.b) * clamped)
+    };
+  }
+
+  function toRgbString(rgb) {
+    return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+  }
+
+  function getSolarColor(irradianceWm2) {
+    const low = { r: 148, g: 163, b: 184 };
+    const mid = { r: 20, g: 184, b: 166 };
+    const high = { r: 13, g: 148, b: 136 };
+    const normalized = Math.max(0, Math.min(1, irradianceWm2 / 1000));
+
+    if (normalized <= 0.5) {
+      return toRgbString(lerpColor(low, mid, normalized / 0.5));
+    }
+    return toRgbString(lerpColor(mid, high, (normalized - 0.5) / 0.5));
+  }
+
+  function getSolarLevelText(irradianceWm2) {
+    if (irradianceWm2 < 200) {
+      return "Baixa";
+    }
+    if (irradianceWm2 < 600) {
+      return "Média";
+    }
+    return "Alta";
+  }
+
+  function updateRoofSunLabel(text) {
+    if (!roofPolygon || !selectedHouse) {
+      if (sunLabelMarker) {
+        sunLabelMarker.remove();
+        sunLabelMarker = null;
+      }
+      return;
+    }
+
+    const centerLatLng = L.latLng(selectedHouse.lat, selectedHouse.lng);
+    const icon = L.divIcon({
+      className: "roof-sun-label",
+      html: text
+    });
+
+    if (!sunLabelMarker) {
+      sunLabelMarker = L.marker(centerLatLng, {
+        icon,
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 1000
+      }).addTo(map);
+      return;
+    }
+
+    sunLabelMarker.setLatLng(centerLatLng);
+    sunLabelMarker.setIcon(icon);
+  }
+
+  function updateStepperState(activeStep) {
+    const steps = Array.from(stepTrack.querySelectorAll(".step"));
+    steps.forEach((stepEl, index) => {
+      const stepNumber = index + 1;
+      stepEl.classList.remove("active", "done");
+      if (stepNumber < activeStep) {
+        stepEl.classList.add("done");
+      } else if (stepNumber === activeStep) {
+        stepEl.classList.add("active");
+      }
+    });
+
+  }
+
+  function updateDrawControlVisualState() {
+    if (!drawRoofBtn) {
+      return;
+    }
+    drawRoofBtn.classList.toggle("active", isDrawingRoof);
+    drawRoofBtn.textContent = isDrawingRoof
+      ? "Concluir desenho"
+      : "Desenhar telhado";
+  }
+
+  function updateNextStepButtonState() {
+    const canContinue = !!roofPolygon && roofPoints.length >= 3 && !isDrawingRoof;
+    nextStepBtn.disabled = !canContinue;
+  }
+
+  function renderSunForHouse() {
+    if (!selectedHouse || !roofPolygon) {
+      sunInfo.textContent = "Sol no telhado: desenha e fecha primeiro o telhado.";
+      updateRoofSunLabel("Sem dados");
+      updateStepperState(1);
+      return;
+    }
+
+    const when = new Date();
+    const { lat, lng } = selectedHouse;
+    const dailyAverageWm2 = getDailyAverageIrradiance(when, lat, lng);
+    const averagePercent = Math.round((dailyAverageWm2 / 1000) * 100);
+    const fillOpacity = 0.25 + (averagePercent / 100) * 0.55;
+    const solarColor = getSolarColor(dailyAverageWm2);
+    const dailyLevel = getSolarLevelText(dailyAverageWm2);
+
+    roofPolygon.setStyle({
+      color: solarColor,
+      fillColor: solarColor,
+      fillOpacity
+    });
+
+    sunInfo.textContent = `Média do dia: ${dailyAverageWm2} W/m² (${dailyLevel})`;
+    updateRoofSunLabel(`Média dia ${dailyAverageWm2} W/m²`);
+    updateStepperState(2);
+  }
+
+  async function updateAddressFromPoint(lat, lng) {
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`;
+      const response = await fetch(url, {
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Falha no reverse geocoding.");
+      }
+
+      const addressName = (data.display_name || "").trim();
+      if (addressName) {
+        addressInput.value = addressName;
+      }
+    } catch (error) {
+      message.textContent = "Não foi possível atualizar morada automaticamente.";
+    }
+  }
+
+  function refreshDraftLine() {
+    if (roofDraftLine) {
+      roofDraftLine.remove();
+      roofDraftLine = null;
+    }
+
+    if (roofPoints.length >= 1) {
+      roofDraftLine = L.polyline(roofPoints, {
+        color: "#ef4444",
+        weight: 2,
+        dashArray: "6,6"
+      }).addTo(map);
+    }
+  }
+
+  function isClickNearFirstRoofPoint(latlng) {
+    if (roofPoints.length < 3) {
+      return false;
+    }
+
+    const firstPointPixel = map.latLngToContainerPoint(roofPoints[0]);
+    const clickPixel = map.latLngToContainerPoint(latlng);
+    return firstPointPixel.distanceTo(clickPixel) <= 14;
+  }
+
+  function stopRoofDrawing() {
+    isDrawingRoof = false;
+    roofPoints = [];
+    updateDrawControlVisualState();
+    updateNextStepButtonState();
+    if (roofDraftLine) {
+      roofDraftLine.remove();
+      roofDraftLine = null;
+    }
+  }
+
+  async function applyAdjustedPoint(latlng) {
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = L.marker([latlng.lat, latlng.lng], { draggable: true }).addTo(map);
+      marker.on("dragend", async () => {
+        const pos = marker.getLatLng();
+        map.panTo(pos);
+        await applyAdjustedPoint(pos);
+      });
+    }
+
+    map.panTo(latlng);
+    selectedHouse = { lat: latlng.lat, lng: latlng.lng };
+    houseInfo.textContent = `Ponto corrigido: lat ${latlng.lat.toFixed(6)}, lon ${latlng.lng.toFixed(6)}.`;
+    await updateAddressFromPoint(latlng.lat, latlng.lng);
+  }
+
+  function startRoofDrawing() {
+    isDrawingRoof = true;
+    updateDrawControlVisualState();
+    updateNextStepButtonState();
+    updateStepperState(1);
+    roofPoints = [];
+    if (roofDraftLine) {
+      roofDraftLine.remove();
+      roofDraftLine = null;
+    }
+    if (roofPolygon) {
+      roofPolygon.remove();
+      roofPolygon = null;
+    }
+    if (sunLabelMarker) {
+      sunLabelMarker.remove();
+      sunLabelMarker = null;
+    }
+    selectedHouse = null;
+    roofAreaSqm = 0;
+    houseInfo.textContent = "Desenho ativo: clica ponto a ponto no telhado. Para fechar, clica novamente no ponto inicial.";
+    sunInfo.textContent = "Sol no telhado: sem dados.";
+    message.textContent = "Modo desenho ativo: marca os cantos do telhado no mapa.";
+  }
+
+  async function finishRoofDrawing() {
+    if (!isDrawingRoof) {
+      return;
+    }
+    if (roofPoints.length < 3) {
+      houseInfo.textContent = "Precisas de pelo menos 3 pontos para fechar o telhado.";
+      return;
+    }
+
+    if (roofDraftLine) {
+      roofDraftLine.remove();
+      roofDraftLine = null;
+    }
+    if (roofPolygon) {
+      roofPolygon.remove();
+    }
+
+    roofPolygon = L.polygon(roofPoints, {
+      color: "#ef4444",
+      weight: 2,
+      fillColor: "#ef4444",
+      fillOpacity: 0.2
+    }).addTo(map);
+
+    isDrawingRoof = false;
+    updateDrawControlVisualState();
+    updateNextStepButtonState();
+    selectedHouse = averageLatLng(roofPoints);
+    roofAreaSqm = roofAreaSquareMeters(roofPoints);
+
+    const centerLatLng = L.latLng(selectedHouse.lat, selectedHouse.lng);
+    if (marker) {
+      marker.setLatLng(centerLatLng);
+    } else {
+      marker = L.marker([selectedHouse.lat, selectedHouse.lng], { draggable: true }).addTo(map);
+      marker.on("dragend", async () => {
+        const pos = marker.getLatLng();
+        await applyAdjustedPoint(pos);
+      });
+    }
+    map.panTo(centerLatLng);
+
+    houseInfo.textContent = `Telhado fechado com ${roofPoints.length} pontos. Área: ${roofAreaSqm.toFixed(1)} m².`;
+    renderSunForHouse();
+    await updateAddressFromPoint(selectedHouse.lat, selectedHouse.lng);
+    message.textContent = "Telhado fechado com sucesso.";
+  }
+
+  async function toggleRoofDrawing() {
+    if (isDrawingRoof) {
+      if (roofPoints.length >= 3) {
+        await finishRoofDrawing();
+      } else {
+        stopRoofDrawing();
+        houseInfo.textContent = "Desenho cancelado.";
+        sunInfo.textContent = "Sol no telhado: sem dados.";
+        message.textContent = "Desenho cancelado. Para fechar, precisa de pelo menos 3 pontos.";
+      }
+      return;
+    }
+
+    if (roofPolygon) {
+      clearRoof();
+      houseInfo.textContent = "Telhado removido.";
+      return;
+    }
+
+    if (!isDrawingRoof) {
+      startRoofDrawing();
+      return;
+    }
+  }
+
+  function clearRoof() {
+    roofPoints = [];
+    isDrawingRoof = false;
+    selectedHouse = null;
+    roofAreaSqm = 0;
+    updateDrawControlVisualState();
+    if (roofDraftLine) {
+      roofDraftLine.remove();
+      roofDraftLine = null;
+    }
+    if (roofPolygon) {
+      roofPolygon.remove();
+      roofPolygon = null;
+    }
+    if (sunLabelMarker) {
+      sunLabelMarker.remove();
+      sunLabelMarker = null;
+    }
+    houseInfo.textContent = "Casa selecionada: nenhuma. Clica no mapa para mudar o pino.";
+    sunInfo.textContent = "Sol no telhado: sem dados.";
+    message.textContent = "Telhado limpo.";
+    updateStepperState(1);
+    updateNextStepButtonState();
+  }
+
+  function saveRoofSelectionForNextStep() {
+    if (!roofPolygon || !selectedHouse || roofPoints.length < 3) {
+      return false;
+    }
+
+    const payload = {
+      selectedAt: new Date().toISOString(),
+      address: addressInput.value.trim(),
+      center: selectedHouse,
+      points: roofPoints.map((point) => ({ lat: point.lat, lng: point.lng })),
+      areaSqm: roofAreaSqm
+    };
+
+    sessionStorage.setItem("roofSelection", JSON.stringify(payload));
+    return true;
+  }
+
+  addressInput.addEventListener("input", () => {
+    selectedSuggestion = null;
+    const query = addressInput.value.trim();
+
+    if (suggestionDebounce) {
+      clearTimeout(suggestionDebounce);
+      suggestionDebounce = null;
+    }
+
+    if (query.length < 3) {
+      clearSuggestions();
+      return;
+    }
+
+    suggestionDebounce = setTimeout(async () => {
+      try {
+        const suggestions = await fetchSuggestions(query);
+        renderSuggestions(suggestions);
+        if (Array.isArray(suggestions) && suggestions.length === 0) {
+          message.textContent = "Sem sugestões para essa morada.";
+        } else {
+          message.textContent = "";
+        }
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          clearSuggestions();
+          message.textContent = "Não foi possível carregar sugestões agora. Tenta novamente.";
+        }
+      }
+    }, 700);
+  });
+
+  addressInput.addEventListener("keydown", async (event) => {
+    if (!suggestionsEl.classList.contains("open")) {
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      suggestionIndex = (suggestionIndex + 1) % suggestionItems.length;
+      updateSuggestionHighlight();
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      suggestionIndex = suggestionIndex <= 0 ? suggestionItems.length - 1 : suggestionIndex - 1;
+      updateSuggestionHighlight();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      clearSuggestions();
+      return;
+    }
+
+    if (event.key === "Enter" && suggestionIndex >= 0 && suggestionItems[suggestionIndex]) {
+      event.preventDefault();
+      const selected = suggestionItems[suggestionIndex];
+      selectedSuggestion = selected;
+      addressInput.value = selected.displayName;
+      applyGeocodeResult(selected);
+      clearSuggestions();
+    }
+  });
+
+  addressInput.addEventListener("blur", () => {
+    setTimeout(() => clearSuggestions(), 120);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!suggestionsEl.contains(event.target) && event.target !== addressInput) {
+      clearSuggestions();
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const address = addressInput.value.trim();
+    if (!address) {
+      message.textContent = "Escreve uma morada.";
+      return;
+    }
+
+    if (selectedSuggestion && selectedSuggestion.displayName === address) {
+      applyGeocodeResult(selectedSuggestion);
+      clearSuggestions();
+      return;
+    }
+
+    message.textContent = "A procurar...";
+    clearSuggestions();
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      try {
+        const response = await fetch(`/api/geocode?address=${encodeURIComponent(address)}`, {
+          signal: controller.signal
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.message || "Nao foi possivel obter coordenadas.");
+        }
+
+        applyGeocodeResult(data);
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch (error) {
+      try {
+        const fallback = await fetchNominatimGeocode(address);
+        applyGeocodeResult(fallback);
+      } catch (fallbackError) {
+        message.textContent = fallbackError.message || error.message;
+      }
+    }
+  });
+
+  map.on("click", async (event) => {
+    if (!isDrawingRoof) {
+      applyAdjustedPoint(event.latlng);
+      return;
+    }
+
+    if (isClickNearFirstRoofPoint(event.latlng)) {
+      await finishRoofDrawing();
+      return;
+    }
+
+    roofPoints.push(event.latlng);
+    refreshDraftLine();
+    houseInfo.textContent = `Pontos do telhado: ${roofPoints.length}.`;
+  });
+
+  drawRoofBtn.addEventListener("click", async () => {
+    await toggleRoofDrawing();
+  });
+
+  clearRoofBtn.addEventListener("click", () => {
+    clearRoof();
+  });
+
+  nextStepBtn.addEventListener("click", () => {
+    if (!saveRoofSelectionForNextStep()) {
+      message.textContent = "Primeiro desenha e fecha o telhado para avançar.";
+      return;
+    }
+    window.location.href = "questionario.html";
+  });
+
+  L.DomEvent.disableClickPropagation(roofPanel);
+  L.DomEvent.disableScrollPropagation(roofPanel);
+
+  updateStepperState(1);
+  updateNextStepButtonState();
+</script>
+</body>
+</html>

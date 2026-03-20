@@ -1,0 +1,7 @@
+com\oficina\backend\controller\QuoteController.class
+com\oficina\backend\model\GeocodeResult.class
+com\oficina\backend\BackendApplication.class
+com\oficina\backend\controller\GeocodingController.class
+com\oficina\backend\model\QuoteEmailRequest.class
+com\oficina\backend\service\OdooSubmissionService.class
+com\oficina\backend\service\QuoteEmailService.class

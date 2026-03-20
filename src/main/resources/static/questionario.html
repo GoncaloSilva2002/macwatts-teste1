@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Questionário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --primary: #14b8a6;
+      --primary-strong: #0f766e;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --card: #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Manrope", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background: radial-gradient(circle at top, #ebfffb 0%, #d8f2ef 100%);
+      min-height: 100dvh;
+      padding: 18px;
+    }
+
+    .shell {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+      border: 1px solid #bde7e2;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #f8fbfa;
+    }
+
+    .top-bar {
+      height: 72px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      gap: 12px;
+    }
+
+    .brand {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      color: #111827;
+      white-space: nowrap;
+    }
+
+    .steps-bar {
+      height: 60px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .step-track {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      flex: 1 1 auto;
+    }
+
+    .step {
+      position: relative;
+      text-align: center;
+      color: #9ca3af;
+      font-weight: 700;
+      font-size: 0.93rem;
+      padding-top: 18px;
+    }
+
+    .step::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid #d1d5db;
+      background: #fff;
+    }
+
+    .step.done {
+      color: #0f766e;
+    }
+
+    .step.done::before {
+      border-color: #0f766e;
+      background: #0f766e;
+    }
+
+    .step.active {
+      color: var(--primary-strong);
+    }
+
+    .step.active::before {
+      border-color: var(--primary);
+      background: var(--primary);
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .card h2 {
+      margin: 0 0 8px;
+      font-size: 1.45rem;
+    }
+
+    .sub {
+      margin: 0 0 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    #roofPreview {
+      width: 100%;
+      height: 380px;
+      border-radius: 10px;
+      border: 1px solid #dbe1e8;
+      overflow: hidden;
+    }
+
+    .meta {
+      margin-top: 10px;
+      display: grid;
+      gap: 6px;
+      color: #374151;
+      font-size: 0.95rem;
+    }
+
+    form {
+      display: grid;
+      gap: 12px;
+    }
+
+    .label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    input[type="number"] {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.96rem;
+      width: 100%;
+    }
+
+    .price-slider-wrap {
+      display: grid;
+      gap: 8px;
+    }
+
+    .price-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--primary-strong);
+    }
+
+    .hint {
+      font-size: 0.82rem;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      outline: none;
+      background: linear-gradient(to right, #14b8a6 0%, #14b8a6 0%, #d1d5db 0%, #d1d5db 100%);
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f766e;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0f766e;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 0 2px #0f766e;
+      cursor: pointer;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .back {
+      background: #0f766e;
+      color: #ffffff;
+    }
+
+    .save {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    #status {
+      min-height: 18px;
+      color: var(--primary-strong);
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-top: 8px;
+    }
+
+    .calc-box {
+      margin-top: 10px;
+      border: 1px solid #c9ece7;
+      border-radius: 10px;
+      background: #f1fffc;
+      padding: 10px;
+      display: grid;
+      gap: 6px;
+      font-size: 0.92rem;
+      color: #334155;
+    }
+
+    .calc-box strong {
+      color: #0f766e;
+    }
+
+    .additional-trigger {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      color: #0f766e;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      background: transparent;
+      border: 0;
+      padding: 0;
+    }
+
+    .additional-info {
+      margin-top: 8px;
+      font-size: 0.88rem;
+      color: #4b5563;
+      min-height: 18px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 2000;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: min(75vw, 680px);
+      height: min(60vh, 460px);
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 20px 30px rgba(15, 23, 42, 0.16);
+      display: grid;
+      gap: 14px;
+      grid-template-rows: auto 1fr auto;
+      overflow: auto;
+      justify-items: stretch;
+    }
+
+    .modal-card h3 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .modal-card p {
+      margin: 0;
+      color: #4b5563;
+      font-size: 0.92rem;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .modal-step {
+      display: none;
+      gap: 8px;
+    }
+
+    .modal-step.active {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      justify-content: flex-start;
+      gap: 32px 20px;
+      text-align: left;
+    }
+
+    .modal-step h4 {
+      width: 100%;
+      margin: 0;
+      font-size: 1rem;
+      color: #0f172a;
+      margin-bottom: 24px;
+    }
+
+    .modal-step p {
+      width: 100%;
+      margin: 0 0 10px 0;
+    }
+
+    .invoice-menu {
+      margin-top: 8px;
+      display: none;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .invoice-menu.open {
+      display: flex;
+    }
+
+    .camera-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 2100;
+    }
+
+    .camera-overlay.open {
+      display: flex;
+    }
+
+    .camera-card {
+      width: min(720px, 95vw);
+      background: #ffffff;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 20px 30px rgba(15, 23, 42, 0.16);
+      display: grid;
+      gap: 12px;
+    }
+
+    .camera-header {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    #cameraPreview {
+      width: 100%;
+      height: 360px;
+      object-fit: cover;
+      border-radius: 10px;
+      background: #0f172a;
+    }
+
+    .camera-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .choice {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      width: fit-content;
+      position: relative;
+    }
+
+    .choice input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .choice span {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid #d1d5db;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      color: #0f172a;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .choice input:checked + span {
+      color: #ffffff;
+      background: #0f766e;
+      border-color: #0f766e;
+    }
+
+    .choice span svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .choice:hover span {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.12);
+    }
+
+    @media (max-width: 900px) {
+      .top-bar {
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px;
+      }
+
+      .brand {
+        font-size: 1rem;
+      }
+
+      .steps-bar {
+        height: 100px;
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 10px;
+      }
+
+      .step {
+        font-size: 0.78rem;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      #roofPreview {
+        height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+<main class="shell">
+  <div class="top-bar">
+    <div class="brand">Macwatts</div>
+  </div>
+  <div class="steps-bar">
+    <div class="step-track">
+      <div class="step done">O seu telhado</div>
+      <div class="step active">Questionário</div>
+      <div class="step">Contacto</div>
+      <div class="step">Próximo passo</div>
+    </div>
+  </div>
+  <section class="content">
+    <article class="card">
+      <h2 id="clientAddressTitle">Morada do cliente</h2>
+      <p class="sub">Vista da área escolhida no passo anterior.</p>
+      <div id="roofPreview"></div>
+          <div class="meta">
+            <div id="centerText">Centro: sem dados</div>
+            <div id="areaText">Área estimada: sem dados</div>
+            <div>
+              <input id="invoiceCapture" type="file" accept="image/*" capture="environment" style="display:none">
+              <input id="invoicePdfUpload" type="file" accept="application/pdf" style="display:none">
+              <button type="button" class="save" id="openInvoiceMenu">Adicionar fatura</button>
+              <div class="invoice-menu" id="invoiceMenu">
+                <button type="button" class="save" id="openInvoiceCapture">Tirar fotografia</button>
+                <button type="button" class="save" id="openInvoicePdf">Carregar PDF</button>
+              </div>
+              <div class="hint" id="invoiceStatus">Opcional. Vamos ler o preço da luz e €/kWh automaticamente.</div>
+            </div>
+          </div>
+    </article>
+
+    <article class="card">
+      <h2>Questionário inicial</h2>
+      <p class="sub">Preencha os dados para estimar quantos painéis solares são necessários.</p>
+      <form id="questionnaireForm">
+        <div>
+          <div class="label">Tipo de imóvel</div>
+          <div class="options">
+            <label class="choice"><input type="radio" name="propertyType" value="condominio" required><span>Condomínio</span></label>
+            <label class="choice"><input type="radio" name="propertyType" value="casa" required><span>Casa</span></label>
+            <label class="choice"><input type="radio" name="propertyType" value="apartamento" required><span>Apartamento</span></label>
+          </div>
+        </div>
+        <div>
+          <div class="label">Quer bateria para os painéis?</div>
+          <div class="options">
+            <label class="choice"><input type="radio" name="batteryChoice" value="sim" required><span>Sim</span></label>
+            <label class="choice"><input type="radio" name="batteryChoice" value="nao" required><span>Não</span></label>
+          </div>
+        </div>
+        <div>
+          <label class="label" for="priceLight">Preço da luz</label>
+          <div class="price-slider-wrap">
+            <div class="price-value" id="priceValue">0€</div>
+            <input id="priceLight" name="priceLight" type="range" min="0" max="400" step="1" value="0">
+          </div>
+          <div>
+            <label class="label" for="pricePerKwh">Preço por kWh (opcional)</label>
+            <input id="pricePerKwh" name="pricePerKwh" type="text" inputmode="decimal" autocomplete="off" placeholder="0.20">
+            <div class="hint">Se não preencher, usamos 0.20€.</div>
+          </div>
+          <div>
+            <label class="label" for="powerTerm">Termo de potência (kVA)</label>
+            <input id="powerTerm" name="powerTerm" type="text" inputmode="decimal" autocomplete="off" placeholder="10.35">
+            <div class="hint">Exemplo: 10.35 kVA.</div>
+          </div>
+          <div class="calc-box">
+            <div>Consumo estimado por mês: <strong id="monthlyKwhTotalText">0.0 kWh</strong></div>
+            <div>Consumo coberto (60%): <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
+            <div>kWp necessário por mês: <strong id="monthlyKwpText">0.00 kWp</strong></div>
+            <div>Painéis necessários: <strong id="panelsNeededText">0 painéis</strong></div>
+          </div>
+          <button type="button" class="additional-trigger" id="openAdditionalInfo">Informações adicionais</button>
+          <div class="additional-info" id="additionalInfoText">Sem consumos adicionais selecionados.</div>
+        </div>
+        <div class="buttons">
+          <button type="button" class="back" id="backBtn">Voltar ao telhado</button>
+          <button type="submit" class="save">Continuar</button>
+        </div>
+      </form>
+      <div id="status"></div>
+    </article>
+  </section>
+</main>
+
+<div class="camera-overlay" id="cameraOverlay" aria-hidden="true">
+  <div class="camera-card">
+    <div class="camera-header">Tirar fotografia</div>
+    <video id="cameraPreview" autoplay playsinline></video>
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+    <div class="camera-actions">
+      <button type="button" class="back" id="closeCamera">Fechar</button>
+      <button type="button" class="save" id="capturePhoto">Capturar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="additionalModal" role="dialog" aria-modal="true" aria-labelledby="additionalTitle">
+  <div class="modal-card">
+    <h3 id="additionalTitle">Em que altura do dia é que consome mais energia?</h3>
+    <div class="modal-step active" data-step="1">
+        <p>Selecione a parte do dia que consome mais eletricidade.</p>
+      <label class="choice"><input type="radio" name="usageTime" value="manhas"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg>Manhãs (08h:00-16h:00)</span></label>
+      <label class="choice"><input type="radio" name="usageTime" value="tardes"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg>Tardes (16h:00-00h:00)</span></label>
+      <label class="choice"><input type="radio" name="usageTime" value="noites"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg>Noites (00h:00-08h:00)</span></label>
+      <label class="choice"><input type="radio" name="usageTime" value="diaTodo"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg>Dia todo</span></label>
+    </div>
+    <div class="modal-step" data-step="2">
+        <p>Selecione o seus equipamentos ou futuros equipamentos.</p>
+      <label class="choice"><input type="checkbox" id="hasPool"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c2 2 4 2 6 0s4-2 6 0 4 2 6 0"></path><path d="M4 9h16"></path><path d="M6 5h12"></path></svg>Piscina</span></label>
+      <label class="choice"><input type="checkbox" id="hasAc"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v4"></path><path d="M12 18v4"></path><path d="M2 12h4"></path><path d="M18 12h4"></path></svg>Ar condicionado</span></label>
+      <label class="choice"><input type="checkbox" id="hasEv"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16l2-7h8l2 7"></path><path d="M7 16v3"></path><path d="M17 16v3"></path><path d="M9 5l2-3h2l2 3"></path></svg>Carro para carregar</span></label>
+      <label class="choice"><input type="checkbox" id="hasRadiators"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path><path d="M6 4v16"></path><path d="M18 4v16"></path></svg>Radiadores elétricos</span></label>
+      <label class="choice"><input type="checkbox" id="hasWaterHeater"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v8a6 6 0 1 1-12 0z"></path><path d="M9 9c1 1 2 1 3 0"></path></svg>Esquentador de água elétrico</span></label>
+      <label class="choice"><input type="checkbox" id="hasAerotermia"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 14c4-4 8-4 12 0"></path><path d="M4 18c4-4 8-4 12 0"></path><circle cx="18" cy="10" r="3"></circle></svg>Aerotermia</span></label>
+    </div>
+    <div class="modal-step" data-step="3">
+      <p>Esta é uma informação importante, já que dependendo do tipo de fornecimento, os equipamentos são diferentes. Para confirmar, só precisa de espreitar o quadro elétrico.</p>
+      <label class="choice"><input type="radio" name="phaseType" value="monofasica"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"></path></svg>Monofásica</span></label>
+      <label class="choice"><input type="radio" name="phaseType" value="trifasica"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h6l-1 8 9-12h-6z"></path></svg>Trifásica</span></label>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="back" id="closeAdditionalModal">Fechar</button>
+      <button type="button" class="save" id="additionalNext">Seguinte</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.js";
+  }
+  function loadStoredJson(key) {
+    const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function persistJson(key, value) {
+    const raw = JSON.stringify(value);
+    sessionStorage.setItem(key, raw);
+    localStorage.setItem(key, raw);
+  }
+
+  const clientAddressTitle = document.getElementById("clientAddressTitle");
+  const centerText = document.getElementById("centerText");
+  const areaText = document.getElementById("areaText");
+  const form = document.getElementById("questionnaireForm");
+  const statusEl = document.getElementById("status");
+  const backBtn = document.getElementById("backBtn");
+  const priceLight = document.getElementById("priceLight");
+  const priceValue = document.getElementById("priceValue");
+  const pricePerKwhInput = document.getElementById("pricePerKwh");
+  const powerTermInput = document.getElementById("powerTerm");
+  const monthlyKwhTotalText = document.getElementById("monthlyKwhTotalText");
+  const monthlyKwhCoveredText = document.getElementById("monthlyKwhCoveredText");
+  const monthlyKwpText = document.getElementById("monthlyKwpText");
+  const panelsNeededText = document.getElementById("panelsNeededText");
+  const openAdditionalInfo = document.getElementById("openAdditionalInfo");
+  const additionalInfoText = document.getElementById("additionalInfoText");
+  const additionalModal = document.getElementById("additionalModal");
+  const additionalTitle = document.getElementById("additionalTitle");
+  const closeAdditionalModal = document.getElementById("closeAdditionalModal");
+  const additionalNext = document.getElementById("additionalNext");
+  const invoiceCapture = document.getElementById("invoiceCapture");
+  const invoicePdfUpload = document.getElementById("invoicePdfUpload");
+  const openInvoiceMenu = document.getElementById("openInvoiceMenu");
+  const openInvoicePdf = document.getElementById("openInvoicePdf");
+  const openInvoiceCapture = document.getElementById("openInvoiceCapture");
+  const invoiceMenu = document.getElementById("invoiceMenu");
+  const invoiceStatus = document.getElementById("invoiceStatus");
+  const cameraOverlay = document.getElementById("cameraOverlay");
+  const cameraPreview = document.getElementById("cameraPreview");
+  const cameraCanvas = document.getElementById("cameraCanvas");
+  const closeCamera = document.getElementById("closeCamera");
+  const capturePhoto = document.getElementById("capturePhoto");
+  let cameraStream = null;
+  const hasPool = document.getElementById("hasPool");
+  const hasAc = document.getElementById("hasAc");
+  const hasEv = document.getElementById("hasEv");
+  const hasRadiators = document.getElementById("hasRadiators");
+  const hasWaterHeater = document.getElementById("hasWaterHeater");
+  const hasAerotermia = document.getElementById("hasAerotermia");
+  const batteryChoiceInputs = Array.from(document.querySelectorAll('input[name="batteryChoice"]'));
+  const phaseTypeInputs = Array.from(document.querySelectorAll('input[name="phaseType"]'));
+  const usageTimeInputs = Array.from(document.querySelectorAll('input[name="usageTime"]'));
+  const modalSteps = Array.from(document.querySelectorAll(".modal-step"));
+  const totalAdditionalSteps = modalSteps.length;
+  let currentAdditionalStep = 1;
+
+  let roofData = loadStoredJson("roofSelection");
+  let savedQuestionnaire = loadStoredJson("contactQuestionnaire");
+  let invoiceFile = loadStoredJson("invoiceFile");
+  let invoicePhoto = loadStoredJson("invoicePhoto");
+  let invoicePdf = loadStoredJson("invoicePdf");
+
+  const map = L.map("roofPreview", {
+    zoomControl: false,
+    attributionControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    boxZoom: false,
+    keyboard: false,
+    tap: false
+  }).setView([38.7223, -9.1393], 12);
+
+  L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 22,
+    maxNativeZoom: 19,
+    attribution: ""
+  }).addTo(map);
+
+  if (!roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
+    statusEl.textContent = "Não encontrámos seleção de telhado. Volta ao passo anterior.";
+    clientAddressTitle.textContent = "Sem morada";
+  } else {
+    const points = roofData.points.map((point) => [point.lat, point.lng]);
+    const polygon = L.polygon(points, {
+      color: "#14b8a6",
+      weight: 2,
+      fillColor: "#14b8a6",
+      fillOpacity: 0.35
+    }).addTo(map);
+    L.marker([roofData.center.lat, roofData.center.lng]).addTo(map);
+    map.fitBounds(polygon.getBounds(), { padding: [20, 20] });
+
+    const selectedAddress = roofData.address || "não disponível";
+    clientAddressTitle.textContent = selectedAddress;
+    centerText.textContent = `Centro: lat ${roofData.center.lat.toFixed(6)}, lon ${roofData.center.lng.toFixed(6)}`;
+    areaText.textContent = `Área estimada: ${(roofData.areaSqm || 0).toFixed(1)} m²`;
+  }
+
+  backBtn.addEventListener("click", () => {
+    window.location.href = "geocoding.html";
+  });
+
+  function getAdditionalCount() {
+    return [
+      hasPool.checked,
+      hasAc.checked,
+      hasEv.checked,
+      hasRadiators.checked,
+      hasWaterHeater.checked,
+      hasAerotermia.checked
+    ].filter(Boolean).length;
+  }
+
+  function selectedAdditionalLabels() {
+    const labels = [];
+    if (hasPool.checked) labels.push("Piscina");
+    if (hasAc.checked) labels.push("Ar condicionado");
+    if (hasEv.checked) labels.push("Carro para carregar");
+    if (hasRadiators.checked) labels.push("Radiadores elétricos");
+    if (hasWaterHeater.checked) labels.push("Esquentador de água elétrico");
+    if (hasAerotermia.checked) labels.push("Aerotermia");
+    return labels;
+  }
+
+  function getBatteryLabel() {
+    const selected = batteryChoiceInputs.find((input) => input.checked);
+    if (!selected) return null;
+    return selected.value === "sim" ? "Sim" : "Não";
+  }
+
+  function getPhaseTypeLabel() {
+    const selected = phaseTypeInputs.find((input) => input.checked);
+    if (!selected) return null;
+    return selected.value === "monofasica" ? "Monofásica" : "Trifásica";
+  }
+
+  function getUsageTimeLabel() {
+    const selected = usageTimeInputs.find((input) => input.checked);
+    if (!selected) return null;
+    switch (selected.value) {
+      case "manhas":
+        return "Manhãs (08h:00-16h:00)";
+      case "tardes":
+        return "Tardes (16h:00-00h:00)";
+      case "noites":
+        return "Noites (00h:00-08h:00)";
+      default:
+        return "Dia todo";
+    }
+  }
+
+  function renderAdditionalSummary() {
+    const labels = selectedAdditionalLabels();
+    const phaseLabel = getPhaseTypeLabel();
+    const usageLabel = getUsageTimeLabel();
+    const batteryLabel = getBatteryLabel();
+    const parts = [];
+    if (labels.length > 0) {
+      parts.push(`Consumos: ${labels.join(", ")} (+${labels.length} painel/painéis)`);
+    }
+    if (phaseLabel) {
+      parts.push(`Luz: ${phaseLabel}`);
+    }
+    if (batteryLabel) {
+      parts.push(`Bateria: ${batteryLabel}`);
+    }
+    if (usageLabel) {
+      parts.push(`Mais consumo: ${usageLabel}`);
+    }
+    additionalInfoText.textContent = parts.length
+      ? parts.join(" | ")
+      : "Sem consumos adicionais selecionados.";
+  }
+
+  function renderPriceSlider() {
+    const min = Number(priceLight.min);
+    const max = Number(priceLight.max);
+    const value = Number(priceLight.value);
+    const percent = ((value - min) / (max - min)) * 100;
+    priceLight.style.background = `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${percent}%, #d1d5db ${percent}%, #d1d5db 100%)`;
+    priceValue.textContent = `${value}€`;
+
+    const pricePerKwhRaw = Number(pricePerKwhInput.value);
+    const pricePerKwh = Number.isFinite(pricePerKwhRaw) && pricePerKwhRaw > 0 ? pricePerKwhRaw : 0.20;
+    const solarCoverage = 0.60;
+    const productionPerKwp = 125;
+    const panelPower = 0.53;
+    const productionPerPanel = panelPower * productionPerKwp;
+
+    const monthlyKwhTotal = value / pricePerKwh;
+    const monthlyKwhCovered = monthlyKwhTotal * solarCoverage;
+    const basePanelsNeeded = monthlyKwhCovered <= 0 ? 0 : Math.ceil(monthlyKwhCovered / productionPerPanel);
+    let panelsNeeded = basePanelsNeeded + getAdditionalCount();
+    if (panelsNeeded % 2 !== 0) {
+      panelsNeeded += 1;
+    }
+
+    monthlyKwhTotalText.textContent = `${monthlyKwhTotal.toFixed(1)} kWh`;
+    monthlyKwhCoveredText.textContent = `${monthlyKwhCovered.toFixed(1)} kWh`;
+    monthlyKwpText.textContent = `${(panelsNeeded * panelPower).toFixed(2)} kWp`;
+    panelsNeededText.textContent = `${panelsNeeded} painéis`;
+  }
+
+  openAdditionalInfo.addEventListener("click", () => {
+    additionalModal.classList.add("open");
+    setAdditionalStep(1);
+  });
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function parseEuroValue(text) {
+    const cleaned = text.replace(/\s/g, "");
+    const match = cleaned.match(/(\d+[.,]\d{2})\s*€?/);
+    if (!match) return null;
+    return Number(match[1].replace(",", "."));
+  }
+
+  function extractValuesFromOcr(rawText) {
+    const text = rawText.replace(/\s+/g, " ").trim();
+    const lines = rawText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+
+    const unitPriceCandidates = [];
+    const baseUnitPriceCandidates = [];
+    const basePriceCandidates = [];
+    const discountedPriceCandidates = [];
+    const totalCandidates = [];
+    const totalCandidatesNoDiscount = [];
+    let summedEnergyTotal = 0;
+    let summedEnergyKwh = 0;
+    let unitPriceFromLines = null;
+
+    const unitRegex = /(\d+[.,]\d+)\s*(€\s*\/\s*kwh|eur\s*\/\s*kwh|€\s*kwh)/i;
+    const kwhQtyRegex = /(\d+[.,]\d+)\s*kwh/i;
+    const euroRegex = /(\d+[.,]\d{2})\s*€/i;
+    const priceInTableRegex = /(\d+[.,]\d+)\s*€\s*(?=\s*\d+[.,]\d{2}\s*€)/i;
+    const basePriceLineRegex = /preço\s*base/i;
+    const totalValorBaseRegex = /total\s+valor\s+base/i;
+    const energyHeaderRegex = /(consumo\s+real|termo\s+de\s+energia|tarifa\s+social)/i;
+    const energyBlockEndRegex = /(potência\s+contratada|taxas\s+e\s+impostos|total\s+luz|total\s+da\s+fatura)/i;
+    const powerTermRegex = /(termo\s+de\s+pot[eê]ncia|pot[eê]ncia)/i;
+    const powerKvaRegex = /(\d+[.,]\d+)\s*k\s*va/i;
+    let inEnergyBlock = false;
+
+    function normalizeLine(rawLine) {
+      return rawLine
+        .replace(/O(?=\\d)/g, "0")
+        .replace(/l(?=\\d)/g, "1")
+        .replace(/I(?=\\d)/g, "1");
+    }
+
+    let powerTermValue = null;
+    for (const rawLine of lines) {
+      const line = normalizeLine(rawLine);
+      const lower = line.toLowerCase();
+      if (energyHeaderRegex.test(lower)) {
+        inEnergyBlock = true;
+      } else if (energyBlockEndRegex.test(lower)) {
+        inEnergyBlock = false;
+      }
+      const unitMatch = line.match(unitRegex);
+      if (unitMatch) {
+        unitPriceCandidates.push(Number(unitMatch[1].replace(",", ".")));
+      }
+
+      if (line.toLowerCase().includes("kwh")) {
+        const lowerInline = line.toLowerCase();
+        const hasDiscountInline = ["desconto", "desc."].some((k) => lowerInline.includes(k));
+        const unitAll = Array.from(line.matchAll(/(\d+[.,]\d+)\s*€\s*\/\s*kwh/ig)).map((m) => Number(m[1].replace(",", ".")));
+        if (!hasDiscountInline && unitAll.length) {
+          baseUnitPriceCandidates.push(unitAll[0]);
+        }
+      }
+
+      const euroMatches = Array.from(line.matchAll(/(\d+[.,]\d{2})\s*€/ig)).map((m) => Number(m[1].replace(",", ".")));
+      const euroValue = euroMatches.length ? euroMatches[euroMatches.length - 1] : null;
+      const kwhMatch = line.match(kwhQtyRegex);
+      const kwhValue = kwhMatch ? Number(kwhMatch[1].replace(",", ".")) : null;
+      const priceInTableMatch = line.match(priceInTableRegex);
+      const priceInTable = priceInTableMatch ? Number(priceInTableMatch[1].replace(",", ".")) : null;
+      const powerKvaMatch = line.match(powerKvaRegex);
+      if (!powerTermValue && powerKvaMatch && (powerTermRegex.test(lower) || lower.includes("kva"))) {
+        powerTermValue = Number(powerKvaMatch[1].replace(",", "."));
+      }
+
+      if (euroValue !== null) {
+        const isEnergyLine = ["termo de energia", "energia (real)", "energia real", "energia", "consumo real"].some((k) => lower.includes(k)) || inEnergyBlock;
+        const hasTax = ["iva", "imposto", "taxa", "contrib"].some((k) => lower.includes(k));
+        const isTotal = ["total", "subtotal"].some((k) => lower.includes(k));
+        const hasDiscount = ["desconto", "desc."].some((k) => lower.includes(k));
+        const hasBase = ["base", "preço base", "preco base"].some((k) => lower.includes(k));
+        const isPowerLine = ["kva", "potencia", "potência", "dias"].some((k) => lower.includes(k));
+
+        if (isEnergyLine && !hasDiscount) {
+          if (unitMatch) {
+            unitPriceCandidates.push(Number(unitMatch[1].replace(",", ".")));
+          } else if (priceInTable) {
+            unitPriceCandidates.push(priceInTable);
+          }
+        }
+
+        if (totalValorBaseRegex.test(lower) && isEnergyLine && !hasDiscount) {
+          totalCandidatesNoDiscount.push(euroValue);
+          totalCandidates.push(euroValue);
+        }
+
+        if (isEnergyLine && !hasTax && !isTotal && !hasDiscount) {
+          basePriceCandidates.push(euroValue);
+        }
+        if (hasDiscount) {
+          discountedPriceCandidates.push(euroValue);
+        }
+        if (isEnergyLine && !hasTax && isTotal && !hasDiscount) {
+          totalCandidatesNoDiscount.push(euroValue);
+          totalCandidates.push(euroValue);
+        }
+
+        if (((isEnergyLine && !hasTax) || inEnergyBlock) && !isPowerLine && kwhValue && !hasDiscount) {
+          summedEnergyKwh += kwhValue;
+
+          const lineTotals = euroMatches.filter((value) => value >= 1);
+          if (lineTotals.length) {
+            summedEnergyTotal += Math.max(...lineTotals);
+          } else if (euroValue) {
+            summedEnergyTotal += euroValue;
+          }
+
+          const lineUnitCandidates = euroMatches.filter((value) => value > 0 && value < 1);
+          if (!unitPriceFromLines && lineUnitCandidates.length) {
+            unitPriceFromLines = Math.min(...lineUnitCandidates);
+          }
+
+          if (!unitPriceFromLines && priceInTable) {
+            unitPriceFromLines = priceInTable;
+          }
+        }
+
+        if (kwhValue && unitMatch) {
+          const computed = kwhValue * Number(unitMatch[1].replace(",", "."));
+          totalCandidates.push(computed);
+        }
+      }
+    }
+
+    let pricePerKwh = baseUnitPriceCandidates.length ? Math.max(...baseUnitPriceCandidates) : null;
+    if (!pricePerKwh && unitPriceCandidates.length) {
+      pricePerKwh = Math.max(...unitPriceCandidates);
+    }
+    if (!pricePerKwh && unitPriceFromLines) {
+      pricePerKwh = unitPriceFromLines;
+    }
+    let priceLight = null;
+    if (totalCandidatesNoDiscount.length) {
+      priceLight = Math.max(...totalCandidatesNoDiscount);
+    } else if (totalCandidates.length) {
+      priceLight = Math.max(...totalCandidates);
+    } else if (summedEnergyTotal > 0) {
+      priceLight = summedEnergyTotal;
+    } else if (basePriceCandidates.length) {
+      priceLight = Math.max(...basePriceCandidates);
+    }
+
+    if (!pricePerKwh && summedEnergyTotal > 0 && summedEnergyKwh > 0) {
+      pricePerKwh = summedEnergyTotal / summedEnergyKwh;
+    }
+
+    if (!pricePerKwh) {
+      const fallback = text.match(unitRegex);
+      pricePerKwh = fallback ? Number(fallback[1].replace(",", ".")) : null;
+    }
+
+    if (!powerTermValue) {
+      const powerTextMatch = text.match(powerKvaRegex);
+      if (powerTextMatch) {
+        powerTermValue = Number(powerTextMatch[1].replace(",", "."));
+      }
+    }
+
+    return { pricePerKwh, priceLight, powerTermValue };
+  }
+
+  async function handleInvoiceFile(file) {
+    if (!file) return;
+    invoiceStatus.textContent = "A ler fatura…";
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = String(reader.result || "");
+      invoiceFile = {
+        name: file.name,
+        type: file.type,
+        dataUrl
+      };
+      persistJson("invoiceFile", invoiceFile);
+    if (file.type === "application/pdf") {
+      invoicePdf = invoiceFile;
+      invoicePhoto = null;
+      persistJson("invoicePdf", invoicePdf);
+      sessionStorage.removeItem("invoicePhoto");
+      localStorage.removeItem("invoicePhoto");
+    } else {
+      invoicePhoto = invoiceFile;
+      invoicePdf = null;
+      persistJson("invoicePhoto", invoicePhoto);
+      sessionStorage.removeItem("invoicePdf");
+      localStorage.removeItem("invoicePdf");
+    }
+
+      try {
+        let rawText = "";
+        if (file.type === "application/pdf") {
+          const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+          const pages = [];
+          for (let i = 1; i <= pdf.numPages; i += 1) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            pages.push(content.items.map((item) => item.str).join(" "));
+          }
+          rawText = pages.join(" ");
+        } else {
+          const result = await Tesseract.recognize(file, "por+eng");
+          rawText = result.data && result.data.text ? result.data.text : "";
+        }
+        const extracted = extractValuesFromOcr(rawText);
+        let applied = false;
+
+        if (Number.isFinite(extracted.pricePerKwh) && extracted.pricePerKwh > 0) {
+          pricePerKwhInput.value = extracted.pricePerKwh.toFixed(4);
+          applied = true;
+        }
+        if (Number.isFinite(extracted.powerTermValue) && extracted.powerTermValue > 0) {
+          powerTermInput.value = extracted.powerTermValue.toFixed(2);
+          applied = true;
+        }
+        if (Number.isFinite(extracted.priceLight) && extracted.priceLight > 0) {
+          const value = clamp(Math.round(extracted.priceLight), Number(priceLight.min), Number(priceLight.max));
+          priceLight.value = String(value);
+          applied = true;
+        }
+
+        if (applied) {
+          renderPriceSlider();
+          invoiceStatus.textContent = "Valores encontrados e aplicados. Pode ajustar manualmente se necessário.";
+        } else {
+          invoiceStatus.textContent = "Não foi possível detetar valores. Pode preencher manualmente.";
+        }
+      } catch (error) {
+        invoiceStatus.textContent = "Falha ao ler a fatura. Pode preencher manualmente.";
+        console.error("OCR erro:", error);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  openInvoiceMenu.addEventListener("click", () => {
+    invoiceMenu.classList.toggle("open");
+  });
+
+  openInvoiceCapture.addEventListener("click", () => {
+    invoiceMenu.classList.remove("open");
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      openCamera();
+      return;
+    }
+    invoiceCapture.value = "";
+    invoiceCapture.click();
+  });
+
+  invoiceCapture.addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    handleInvoiceFile(file);
+  });
+
+  async function openCamera() {
+    try {
+      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraPreview.srcObject = cameraStream;
+      cameraOverlay.classList.add("open");
+      cameraOverlay.setAttribute("aria-hidden", "false");
+    } catch (error) {
+      invoiceStatus.textContent = "Não foi possível abrir a câmara. Pode carregar uma foto.";
+      invoiceCapture.value = "";
+      invoiceCapture.click();
+    }
+  }
+
+  function closeCameraModal() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      cameraStream = null;
+    }
+    cameraOverlay.classList.remove("open");
+    cameraOverlay.setAttribute("aria-hidden", "true");
+  }
+
+  closeCamera.addEventListener("click", closeCameraModal);
+
+  cameraOverlay.addEventListener("click", (event) => {
+    if (event.target === cameraOverlay) {
+      closeCameraModal();
+    }
+  });
+
+  capturePhoto.addEventListener("click", () => {
+    if (!cameraPreview.videoWidth || !cameraPreview.videoHeight) {
+      return;
+    }
+    cameraCanvas.width = cameraPreview.videoWidth;
+    cameraCanvas.height = cameraPreview.videoHeight;
+    const ctx = cameraCanvas.getContext("2d");
+    ctx.drawImage(cameraPreview, 0, 0);
+    cameraCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], "fatura-capturada.jpg", { type: "image/jpeg" });
+      handleInvoiceFile(file);
+      closeCameraModal();
+    }, "image/jpeg", 0.92);
+  });
+
+  openInvoicePdf.addEventListener("click", () => {
+    invoiceMenu.classList.remove("open");
+    invoicePdfUpload.click();
+  });
+
+  invoicePdfUpload.addEventListener("change", (event) => {
+    const file = event.target.files && event.target.files[0];
+    handleInvoiceFile(file);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!invoiceMenu.contains(event.target) && event.target !== openInvoiceMenu) {
+      invoiceMenu.classList.remove("open");
+    }
+  });
+
+  closeAdditionalModal.addEventListener("click", () => {
+    additionalModal.classList.remove("open");
+  });
+
+  additionalModal.addEventListener("click", (event) => {
+    if (event.target === additionalModal) {
+      additionalModal.classList.remove("open");
+    }
+  });
+
+  function setAdditionalStep(step) {
+    currentAdditionalStep = Math.min(Math.max(step, 1), totalAdditionalSteps);
+    modalSteps.forEach((section) => {
+      section.classList.toggle("active", Number(section.dataset.step) === currentAdditionalStep);
+    });
+    if (currentAdditionalStep === 1) {
+      additionalTitle.textContent = "Em que altura do dia é que consome mais energia?";
+    } else if (currentAdditionalStep === 2) {
+      additionalTitle.textContent = "Equipamentos ou Futuros Equipamentos";
+    } else {
+      additionalTitle.textContent = "O seu contador é:";
+    }
+    additionalNext.textContent = currentAdditionalStep === totalAdditionalSteps ? "Concluir" : "Seguinte";
+  }
+
+  additionalNext.addEventListener("click", () => {
+    if (currentAdditionalStep === totalAdditionalSteps) {
+      additionalModal.classList.remove("open");
+      renderAdditionalSummary();
+      return;
+    }
+    setAdditionalStep(currentAdditionalStep + 1);
+  });
+
+  [hasPool, hasAc, hasEv, hasRadiators, hasWaterHeater, hasAerotermia].forEach((checkbox) => {
+    checkbox.addEventListener("change", () => {
+      renderAdditionalSummary();
+      renderPriceSlider();
+    });
+  });
+
+  [...batteryChoiceInputs, ...phaseTypeInputs, ...usageTimeInputs].forEach((input) => {
+    input.addEventListener("change", renderAdditionalSummary);
+  });
+
+  if (savedQuestionnaire) {
+    if (savedQuestionnaire.priceLight !== undefined) {
+      priceLight.value = String(savedQuestionnaire.priceLight);
+    }
+    if (savedQuestionnaire.pricePerKwh !== undefined) {
+      pricePerKwhInput.value = String(savedQuestionnaire.pricePerKwh);
+    }
+    if (savedQuestionnaire.powerTerm !== undefined) {
+      powerTermInput.value = String(savedQuestionnaire.powerTerm);
+    }
+    if (savedQuestionnaire.propertyType) {
+      const propertyOption = form.querySelector(`input[name="propertyType"][value="${savedQuestionnaire.propertyType}"]`);
+      if (propertyOption) propertyOption.checked = true;
+    }
+    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasBattery !== undefined) {
+      const value = savedQuestionnaire.additionalInfo.hasBattery ? "sim" : "nao";
+      const batteryOption = batteryChoiceInputs.find((input) => input.value === value);
+      if (batteryOption) batteryOption.checked = true;
+    }
+    hasPool.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasPool);
+    hasAc.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasAc);
+    hasEv.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasEv);
+    hasRadiators.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasRadiators);
+    hasWaterHeater.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasWaterHeater);
+    hasAerotermia.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasAerotermia);
+    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.phaseType) {
+      const phaseOption = phaseTypeInputs.find((input) => input.value === savedQuestionnaire.additionalInfo.phaseType);
+      if (phaseOption) phaseOption.checked = true;
+    }
+    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.usageTime) {
+      const usageOption = usageTimeInputs.find((input) => input.value === savedQuestionnaire.additionalInfo.usageTime);
+      if (usageOption) usageOption.checked = true;
+    }
+  }
+
+  if (invoiceFile && invoiceFile.dataUrl) {
+    invoiceStatus.textContent = "Fatura carregada. Será enviada por email.";
+  } else if ((invoicePhoto && invoicePhoto.dataUrl) || (invoicePdf && invoicePdf.dataUrl)) {
+    invoiceStatus.textContent = "Fatura carregada. Será enviada por email.";
+  }
+
+  priceLight.addEventListener("input", renderPriceSlider);
+  pricePerKwhInput.addEventListener("input", () => {
+    let value = pricePerKwhInput.value.replace(/[^0-9.]/g, "");
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+    const [intPartRaw, decPartRaw] = value.split(".");
+    const intPart = (intPartRaw || "").slice(0, 2);
+    const decPart = (decPartRaw || "").slice(0, 4);
+    pricePerKwhInput.value = decPartRaw !== undefined ? `${intPart}.${decPart}` : intPart;
+    renderPriceSlider();
+  });
+  powerTermInput.addEventListener("input", () => {
+    let value = powerTermInput.value.replace(/[^0-9.]/g, "");
+    const parts = value.split(".");
+    if (parts.length > 2) {
+      value = `${parts[0]}.${parts.slice(1).join("")}`;
+    }
+    const [intPartRaw, decPartRaw] = value.split(".");
+    const intPart = (intPartRaw || "").slice(0, 2);
+    const decPart = (decPartRaw || "").slice(0, 2);
+    powerTermInput.value = decPartRaw !== undefined ? `${intPart}.${decPart}` : intPart;
+  });
+  renderAdditionalSummary();
+  renderPriceSlider();
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const formData = new FormData(form);
+    const priceValueNumber = Number(formData.get("priceLight"));
+    const pricePerKwhRaw = Number(formData.get("pricePerKwh"));
+    const pricePerKwh = Number.isFinite(pricePerKwhRaw) && pricePerKwhRaw > 0 ? pricePerKwhRaw : 0.20;
+    const powerTermRaw = Number(formData.get("powerTerm"));
+    const powerTerm = Number.isFinite(powerTermRaw) && powerTermRaw > 0 ? powerTermRaw : null;
+    const solarCoverage = 0.60;
+    const productionPerKwp = 125;
+    const panelPower = 0.53;
+    const productionPerPanel = panelPower * productionPerKwp;
+
+    const monthlyKwhEstimate = priceValueNumber / pricePerKwh;
+    const monthlyKwhCoveredEstimate = monthlyKwhEstimate * solarCoverage;
+    const basePanelsNeeded = monthlyKwhCoveredEstimate <= 0 ? 0 : Math.ceil(monthlyKwhCoveredEstimate / productionPerPanel);
+    const additionalPanels = getAdditionalCount();
+    let totalPanels = basePanelsNeeded + additionalPanels;
+    if (totalPanels % 2 !== 0) {
+      totalPanels += 1;
+    }
+    const monthlyKwpNeeded = totalPanels * panelPower;
+
+    const payload = {
+      propertyType: formData.get("propertyType"),
+      priceLight: priceValueNumber,
+      pricePerKwh,
+      powerTerm,
+      monthlyKwhEstimate,
+      monthlyKwhCoveredEstimate,
+      monthlyKwpNeeded,
+      basePanelsNeeded,
+      additionalPanels,
+      additionalInfo: {
+        hasPool: hasPool.checked,
+        hasAc: hasAc.checked,
+        hasEv: hasEv.checked,
+        hasBattery: batteryChoiceInputs.find((input) => input.checked)?.value === "sim",
+        hasRadiators: hasRadiators.checked,
+        hasWaterHeater: hasWaterHeater.checked,
+        hasAerotermia: hasAerotermia.checked,
+        phaseType: phaseTypeInputs.find((input) => input.checked)?.value || null,
+        usageTime: usageTimeInputs.find((input) => input.checked)?.value || null
+      },
+      invoiceFile,
+      panelsNeeded: totalPanels,
+      updatedAt: new Date().toISOString()
+    };
+    persistJson("contactQuestionnaire", payload);
+    statusEl.textContent = "Dados guardados. A avançar para contacto...";
+    window.location.href = "contacto.html";
+  });
+</script>
+</body>
+</html>

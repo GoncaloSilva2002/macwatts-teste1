@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: oficina-backend
+    env: docker
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
