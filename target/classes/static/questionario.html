@@ -1085,9 +1085,9 @@
     priceLight.style.background = `linear-gradient(to right, #14b8a6 0%, #14b8a6 ${percent}%, #d1d5db ${percent}%, #d1d5db 100%)`;
     priceValue.textContent = `${value}€`;
 
-    const pricePerKwhRaw = Number(pricePerKwhInput.value);
+    const pricePerKwhRaw = Number(String(pricePerKwhInput.value || "").replace(",", "."));
     const pricePerKwh = Number.isFinite(pricePerKwhRaw) && pricePerKwhRaw > 0 ? pricePerKwhRaw : 0.20;
-    const powerTermRaw = Number(powerTermInput.value);
+    const powerTermRaw = Number(String(powerTermInput.value || "").replace(",", "."));
     const powerTerm = Number.isFinite(powerTermRaw) && powerTermRaw > 0 ? powerTermRaw : null;
     const panelPower = 0.53;
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
@@ -1927,7 +1927,7 @@
     renderPriceSlider();
   });
   pricePerKwhInput.addEventListener("input", () => {
-    let value = pricePerKwhInput.value.replace(/[^0-9.]/g, "");
+    let value = pricePerKwhInput.value.replace(",", ".").replace(/[^0-9.]/g, "");
     const parts = value.split(".");
     if (parts.length > 2) {
       value = `${parts[0]}.${parts.slice(1).join("")}`;
@@ -1940,7 +1940,7 @@
     renderPriceSlider();
   });
   powerTermInput.addEventListener("input", () => {
-    let value = powerTermInput.value.replace(/[^0-9.]/g, "");
+    let value = powerTermInput.value.replace(",", ".").replace(/[^0-9.]/g, "");
     const parts = value.split(".");
     if (parts.length > 2) {
       value = `${parts[0]}.${parts.slice(1).join("")}`;
@@ -1957,9 +1957,9 @@
     event.preventDefault();
     const formData = new FormData(form);
     const priceValueNumber = Number(formData.get("priceLight"));
-    const pricePerKwhRaw = Number(formData.get("pricePerKwh"));
+    const pricePerKwhRaw = Number(String(formData.get("pricePerKwh") || "").replace(",", "."));
     const pricePerKwh = Number.isFinite(pricePerKwhRaw) && pricePerKwhRaw > 0 ? pricePerKwhRaw : 0.20;
-    const powerTermRaw = Number(formData.get("powerTerm"));
+    const powerTermRaw = Number(String(formData.get("powerTerm") || "").replace(",", "."));
     const powerTerm = Number.isFinite(powerTermRaw) && powerTermRaw > 0 ? powerTermRaw : null;
     const panelPower = 0.53;
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
