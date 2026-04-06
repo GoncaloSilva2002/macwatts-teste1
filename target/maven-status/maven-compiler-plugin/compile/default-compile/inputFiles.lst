@@ -1,8 +1,5 @@
 /home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/BackendApplication.java
 /home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/config/JacksonConfig.java
-/home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/controller/GeocodingController.java
 /home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/controller/QuoteController.java
-/home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/model/GeocodeResult.java
 /home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/model/QuoteEmailRequest.java
-/home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/service/OdooSubmissionService.java
 /home/goncalo/Desktop/macwatts-teste/src/main/java/com/oficina/backend/service/QuoteEmailService.java
