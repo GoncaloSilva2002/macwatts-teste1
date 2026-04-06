@@ -179,6 +179,47 @@
       font-weight: 600;
       cursor: pointer;
     }
+
+    @media (max-width: 900px) {
+      #map {
+        border-radius: 0;
+        border-width: 0;
+      }
+
+      .shell {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+      }
+
+      .top-bar {
+        height: auto;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .search-group {
+        width: 100%;
+      }
+
+      .steps-bar {
+        height: auto;
+        padding: 8px 10px 10px;
+      }
+
+      .step {
+        font-size: 0.75rem;
+        padding-top: 14px;
+      }
+
+      .panel {
+        top: 150px;
+        left: 6px;
+        right: 6px;
+        width: auto;
+      }
+    }
   </style>
 </head>
 
