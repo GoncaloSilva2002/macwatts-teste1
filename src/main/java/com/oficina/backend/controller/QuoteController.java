@@ -1,7 +1,6 @@
 package com.oficina.backend.controller;
 
 import com.oficina.backend.model.QuoteEmailRequest;
-import com.oficina.backend.service.OdooSubmissionService;
 import com.oficina.backend.service.QuoteEmailService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class QuoteController {
 
     private final QuoteEmailService quoteEmailService;
-    private final OdooSubmissionService odooSubmissionService;
-
-    public QuoteController(QuoteEmailService quoteEmailService, OdooSubmissionService odooSubmissionService) {
+    public QuoteController(QuoteEmailService quoteEmailService) {
         this.quoteEmailService = quoteEmailService;
-        this.odooSubmissionService = odooSubmissionService;
     }
 
     @PostMapping("/email")
@@ -38,11 +34,10 @@ public class QuoteController {
 
         try {
             boolean sent = quoteEmailService.sendQuotePdf(request);
-            odooSubmissionService.submitWebsiteRecord(request);
             if (sent) {
-                return ResponseEntity.ok("Email enviado com sucesso para cliente e empresa. Submissao registada no Odoo.");
+                return ResponseEntity.ok("Email enviado com sucesso para cliente e empresa.");
             }
-            return ResponseEntity.ok("SMTP nao configurado: fluxo concluido em modo teste e submissao registada no Odoo.");
+            return ResponseEntity.ok("SMTP nao configurado: fluxo concluido em modo teste.");
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(ex.getMessage());
         } catch (IllegalStateException ex) {
