@@ -182,6 +182,7 @@ function startDrawing() {
   roofPoints = [];
 
   if (polygon) polygon.setMap(null);
+  map.getDiv().classList.add("drawing");
 
   message.textContent = "Modo desenho ativo";
   drawRoofBtn.textContent = "Concluir";
@@ -213,6 +214,7 @@ function finishDrawing() {
 
   drawing = false;
   drawRoofBtn.textContent = "Desenhar";
+  map.getDiv().classList.remove("drawing");
 
   const area = google.maps.geometry.spherical.computeArea(
     roofPoints.map(p => new google.maps.LatLng(p.lat, p.lng))
@@ -228,6 +230,7 @@ function clearRoof() {
 
   roofPoints = [];
   drawing = false;
+  if (map) map.getDiv().classList.remove("drawing");
 
   drawRoofBtn.textContent = "Desenhar";
   houseInfo.textContent = "Casa: nenhuma";
