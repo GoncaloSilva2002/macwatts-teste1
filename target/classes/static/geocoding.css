@@ -62,7 +62,7 @@ body { margin: 0; font-family: Manrope, sans-serif; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 25px;
 }
 
 .step-track {
