@@ -54,17 +54,15 @@
               <div class="chart-row">
                 <div class="chart-label">Para a Habitação</div>
                 <div class="chart-bar">
-                  <div class="chart-fill chart-green" id="chartHomeFill">
-                    <span class="chart-value" id="chartHomePct">0%</span>
-                  </div>
+                  <div class="chart-fill chart-green" id="chartHomeFill"></div>
+                  <span class="chart-value" id="chartHomePct">0%</span>
                 </div>
               </div>
               <div class="chart-row">
                 <div class="chart-label">Para a Rede</div>
                 <div class="chart-bar">
-                  <div class="chart-fill chart-dark" id="chartGridFill">
-                    <span class="chart-value" id="chartGridPct">0%</span>
-                  </div>
+                  <div class="chart-fill chart-dark" id="chartGridFill"></div>
+                  <span class="chart-value" id="chartGridPct">0%</span>
                 </div>
               </div>
               <div class="chart-caption" id="chartHomeCaption">0 kWh para a habitação</div>
@@ -74,17 +72,15 @@
               <div class="chart-row">
                 <div class="chart-label">Do Sistema Fotovoltaico</div>
                 <div class="chart-bar">
-                  <div class="chart-fill chart-blue" id="chartSystemFill">
-                    <span class="chart-value" id="chartSystemPct">0%</span>
-                  </div>
+                  <div class="chart-fill chart-blue" id="chartSystemFill"></div>
+                  <span class="chart-value" id="chartSystemPct">0%</span>
                 </div>
               </div>
               <div class="chart-row">
                 <div class="chart-label">Da Rede</div>
                 <div class="chart-bar">
-                  <div class="chart-fill chart-yellow" id="chartNetworkFill">
-                    <span class="chart-value" id="chartNetworkPct">0%</span>
-                  </div>
+                  <div class="chart-fill chart-yellow" id="chartNetworkFill"></div>
+                  <span class="chart-value" id="chartNetworkPct">0%</span>
                 </div>
               </div>
               <div class="chart-caption" id="chartNetworkCaption">0 kWh da rede</div>
@@ -632,12 +628,12 @@
     renderAdditionalSummary();
 
     const productionMonthly = productionPerPanel * panelsNeeded;
-    const homeFromCovered = Math.min(monthlyKwhCovered, productionMonthly);
-    const gridFromCovered = Math.max(0, monthlyKwhCovered - homeFromCovered);
+    const homeFromCovered = productionMonthly;
+    const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhCovered);
     const homeFromTotal = Math.min(monthlyKwhTotal, productionMonthly);
     const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal);
 
-    const coveredBase = monthlyKwhCovered > 0 ? monthlyKwhCovered : 0;
+    const coveredBase = (homeFromCovered + gridFromCovered) > 0 ? (homeFromCovered + gridFromCovered) : 0;
     const totalBase = monthlyKwhTotal > 0 ? monthlyKwhTotal : 0;
 
     const homeCoveredPct = coveredBase ? (homeFromCovered / coveredBase) * 100 : 0;
