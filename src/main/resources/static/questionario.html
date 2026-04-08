@@ -189,8 +189,40 @@
 
   function persistJson(key, value) {
     const raw = JSON.stringify(value);
-    sessionStorage.setItem(key, raw);
-    localStorage.setItem(key, raw);
+    try {
+      sessionStorage.setItem(key, raw);
+    } catch (error) {
+      console.warn("Falha ao guardar em sessionStorage:", error);
+    }
+    try {
+      localStorage.setItem(key, raw);
+    } catch (error) {
+      console.warn("Falha ao guardar em localStorage:", error);
+    }
+  }
+
+  function openLocalDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("macwatts-storage", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("uploads")) {
+          db.createObjectStore("uploads");
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function idbSet(key, value) {
+    const db = await openLocalDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("uploads", "readwrite");
+      tx.objectStore("uploads").put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 
   const clientAddressTitle = document.getElementById("clientAddressTitle");
@@ -1116,6 +1148,12 @@
         dataUrl
       };
       persistJson("invoiceFile", invoiceFile);
+      try {
+        await idbSet("invoiceFile", invoiceFile);
+        await idbSet("invoiceKind", file.type === "application/pdf" ? "pdf" : "photo");
+      } catch (error) {
+        console.warn("Falha ao guardar fatura em IndexedDB:", error);
+      }
     if (file.type === "application/pdf") {
       invoicePdf = invoiceFile;
       invoicePhoto = null;
@@ -1419,6 +1457,13 @@
     }
 
     const mapSnapshot = await generateMapSnapshot();
+    try {
+      if (mapSnapshot) {
+        await idbSet("mapSnapshot", mapSnapshot);
+      }
+    } catch (error) {
+      console.warn("Falha ao guardar mapa em IndexedDB:", error);
+    }
     const mapSnapshotUrl = buildStaticMapUrl();
     const payload = {
       propertyType: formData.get("propertyType"),

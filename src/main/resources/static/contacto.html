@@ -89,8 +89,50 @@
 
   function persistJson(key, value) {
     const raw = JSON.stringify(value);
-    sessionStorage.setItem(key, raw);
-    localStorage.setItem(key, raw);
+    try {
+      sessionStorage.setItem(key, raw);
+    } catch (error) {
+      console.warn("Falha ao guardar em sessionStorage:", error);
+    }
+    try {
+      localStorage.setItem(key, raw);
+    } catch (error) {
+      console.warn("Falha ao guardar em localStorage:", error);
+    }
+  }
+
+  function openLocalDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open("macwatts-storage", 1);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("uploads")) {
+          db.createObjectStore("uploads");
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function idbGet(key) {
+    const db = await openLocalDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("uploads", "readonly");
+      const request = tx.objectStore("uploads").get(key);
+      request.onsuccess = () => resolve(request.result ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function idbDel(key) {
+    const db = await openLocalDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("uploads", "readwrite");
+      tx.objectStore("uploads").delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
   }
 
   function formatBatterySummary(questionnaireData) {
@@ -146,71 +188,107 @@
   let invoicePhoto = loadStoredJson("invoicePhoto");
   let invoicePdf = loadStoredJson("invoicePdf");
 
-  if (roofData) {
-    sumAddress.textContent = `Morada: ${roofData.address || "não disponível"}`;
-    if (roofData.center && typeof roofData.center.lat === "number" && typeof roofData.center.lng === "number") {
-      sumCoords.textContent = `Coordenadas: lat ${roofData.center.lat.toFixed(6)}, lon ${roofData.center.lng.toFixed(6)}`;
+  function renderSummary() {
+    if (roofData) {
+      sumAddress.textContent = `Morada: ${roofData.address || "não disponível"}`;
+      if (roofData.center && typeof roofData.center.lat === "number" && typeof roofData.center.lng === "number") {
+        sumCoords.textContent = `Coordenadas: lat ${roofData.center.lat.toFixed(6)}, lon ${roofData.center.lng.toFixed(6)}`;
+      }
+      sumArea.textContent = `Área do telhado: ${(roofData.areaSqm || 0).toFixed(1)} m²`;
     }
-    sumArea.textContent = `Área do telhado: ${(roofData.areaSqm || 0).toFixed(1)} m²`;
+
+    if (questionnaireData) {
+      const additionalLabels = [];
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasPool) additionalLabels.push("Piscina");
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAc) additionalLabels.push("Ar condicionado");
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasEv) additionalLabels.push("Carro para carregar");
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasRadiators) additionalLabels.push("Radiadores elétricos");
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasWaterHeater) additionalLabels.push("Esquentador de água elétrico");
+      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAerotermia) additionalLabels.push("Aerotermia");
+
+      const usageTimeLabel = (() => {
+        const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.usageTime;
+        if (!value) return "não disponível";
+        if (value === "manhas") return "Manhãs (08h:00-16h:00)";
+        if (value === "tardes") return "Tardes (16h:00-00h:00)";
+        if (value === "noites") return "Noites (00h:00-08h:00)";
+        return "Dia todo";
+      })();
+
+      const phaseLabel = (() => {
+        const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.phaseType;
+        if (!value) return "não disponível";
+        return value === "monofasica" ? "Monofásica" : "Trifásica";
+      })();
+
+      const batteryLabel = formatBatterySummary(questionnaireData);
+
+      sumProperty.textContent = `Tipo de imóvel: ${questionnaireData.propertyType || "não disponível"}`;
+      sumPrice.textContent = `Preço da luz: ${Number(questionnaireData.priceLight || 0).toFixed(0)}€`;
+      if (questionnaireData.pricePerKwh !== undefined && Number.isFinite(Number(questionnaireData.pricePerKwh))) {
+        sumPricePerKwh.textContent = `Preço por kWh: ${Number(questionnaireData.pricePerKwh).toFixed(4)}€`;
+      } else {
+        sumPricePerKwh.textContent = "Preço por kWh: 0.20€";
+      }
+      sumKwh.textContent = `Consumo mensal (total): ${Number(questionnaireData.monthlyKwhEstimate || 0).toFixed(1)} kWh`;
+      sumKwhCovered.textContent = `Consumo mensal: ${Number(questionnaireData.monthlyKwhCoveredEstimate || 0).toFixed(1)} kWh`;
+      if (questionnaireData.zoneLabel) {
+        sumZone.textContent = `Zona: ${questionnaireData.zoneLabel}`;
+      } else {
+        sumZone.textContent = "Zona: não disponível";
+      }
+      if (questionnaireData.panelMonthlyKwh !== undefined && Number.isFinite(Number(questionnaireData.panelMonthlyKwh))) {
+        sumPanelProduction.textContent = `Produção média por painel: ${Number(questionnaireData.panelMonthlyKwh).toFixed(0)} kWh/mês`;
+      } else {
+        sumPanelProduction.textContent = "Produção média por painel: não disponível";
+      }
+      sumPanels.textContent = `Painéis necessários: ${Number(questionnaireData.panelsNeeded || 0)} painéis`;
+      sumAdditional.textContent = `Informações adicionais: ${additionalLabels.length ? "ver abaixo" : "nenhuma"}`;
+      sumEquipments.textContent = `Equipamentos: ${additionalLabels.length ? additionalLabels.join(", ") : "nenhum"}`;
+      sumUsage.textContent = `Maior consumo: ${usageTimeLabel}`;
+      sumPhase.textContent = `Tipo de contador: ${phaseLabel}`;
+      sumBattery.textContent = `Bateria: ${batteryLabel}`;
+      if (questionnaireData.powerTerm !== undefined && Number.isFinite(Number(questionnaireData.powerTerm))) {
+        sumPowerTerm.textContent = `Termo de potência: ${Number(questionnaireData.powerTerm).toFixed(2)} kVA`;
+      } else {
+        sumPowerTerm.textContent = "Termo de potência: não disponível";
+      }
+    }
   }
 
-  if (questionnaireData) {
-    const additionalLabels = [];
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasPool) additionalLabels.push("Piscina");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAc) additionalLabels.push("Ar condicionado");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasEv) additionalLabels.push("Carro para carregar");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasRadiators) additionalLabels.push("Radiadores elétricos");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasWaterHeater) additionalLabels.push("Esquentador de água elétrico");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAerotermia) additionalLabels.push("Aerotermia");
-
-    const usageTimeLabel = (() => {
-      const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.usageTime;
-      if (!value) return "não disponível";
-      if (value === "manhas") return "Manhãs (08h:00-16h:00)";
-      if (value === "tardes") return "Tardes (16h:00-00h:00)";
-      if (value === "noites") return "Noites (00h:00-08h:00)";
-      return "Dia todo";
-    })();
-
-    const phaseLabel = (() => {
-      const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.phaseType;
-      if (!value) return "não disponível";
-      return value === "monofasica" ? "Monofásica" : "Trifásica";
-    })();
-
-    const batteryLabel = formatBatterySummary(questionnaireData);
-
-    sumProperty.textContent = `Tipo de imóvel: ${questionnaireData.propertyType || "não disponível"}`;
-    sumPrice.textContent = `Preço da luz: ${Number(questionnaireData.priceLight || 0).toFixed(0)}€`;
-    if (questionnaireData.pricePerKwh !== undefined && Number.isFinite(Number(questionnaireData.pricePerKwh))) {
-      sumPricePerKwh.textContent = `Preço por kWh: ${Number(questionnaireData.pricePerKwh).toFixed(4)}€`;
-    } else {
-      sumPricePerKwh.textContent = "Preço por kWh: 0.20€";
+  async function hydrateUploadsFromIdb() {
+    try {
+      if (!invoiceFile) {
+        const storedInvoice = await idbGet("invoiceFile");
+        const storedKind = await idbGet("invoiceKind");
+        if (storedInvoice) {
+          invoiceFile = storedInvoice;
+          const kind = storedKind || storedInvoice.type;
+          if (kind === "pdf" || storedInvoice.type === "application/pdf") {
+            invoicePdf = storedInvoice;
+            invoicePhoto = null;
+          } else {
+            invoicePhoto = storedInvoice;
+            invoicePdf = null;
+          }
+        }
+      }
+      if (questionnaireData && !questionnaireData.mapSnapshotBase64) {
+        const storedMap = await idbGet("mapSnapshot");
+        if (storedMap) {
+          questionnaireData.mapSnapshotBase64 = storedMap.dataUrl;
+          questionnaireData.mapSnapshotName = storedMap.name;
+          questionnaireData.mapSnapshotMime = storedMap.mime;
+        }
+      }
+    } catch (error) {
+      console.warn("Falha ao ler anexos do IndexedDB:", error);
     }
-    sumKwh.textContent = `Consumo mensal (total): ${Number(questionnaireData.monthlyKwhEstimate || 0).toFixed(1)} kWh`;
-    sumKwhCovered.textContent = `Consumo mensal: ${Number(questionnaireData.monthlyKwhCoveredEstimate || 0).toFixed(1)} kWh`;
-    if (questionnaireData.zoneLabel) {
-      sumZone.textContent = `Zona: ${questionnaireData.zoneLabel}`;
-    } else {
-      sumZone.textContent = "Zona: não disponível";
-    }
-    if (questionnaireData.panelMonthlyKwh !== undefined && Number.isFinite(Number(questionnaireData.panelMonthlyKwh))) {
-      sumPanelProduction.textContent = `Produção média por painel: ${Number(questionnaireData.panelMonthlyKwh).toFixed(0)} kWh/mês`;
-    } else {
-      sumPanelProduction.textContent = "Produção média por painel: não disponível";
-    }
-    sumPanels.textContent = `Painéis necessários: ${Number(questionnaireData.panelsNeeded || 0)} painéis`;
-    sumAdditional.textContent = `Informações adicionais: ${additionalLabels.length ? "ver abaixo" : "nenhuma"}`;
-    sumEquipments.textContent = `Equipamentos: ${additionalLabels.length ? additionalLabels.join(", ") : "nenhum"}`;
-    sumUsage.textContent = `Maior consumo: ${usageTimeLabel}`;
-    sumPhase.textContent = `Tipo de contador: ${phaseLabel}`;
-    sumBattery.textContent = `Bateria: ${batteryLabel}`;
-    if (questionnaireData.powerTerm !== undefined && Number.isFinite(Number(questionnaireData.powerTerm))) {
-      sumPowerTerm.textContent = `Termo de potência: ${Number(questionnaireData.powerTerm).toFixed(2)} kVA`;
-    } else {
-      sumPowerTerm.textContent = "Termo de potência: não disponível";
-    }
+    renderSummary();
   }
+
+  renderSummary();
+  hydrateUploadsFromIdb();
 
   backBtn.addEventListener("click", () => {
     window.location.href = "questionario.html";
@@ -310,6 +388,38 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
+    if (!invoiceFile) {
+      try {
+        const storedInvoice = await idbGet("invoiceFile");
+        const storedKind = await idbGet("invoiceKind");
+        if (storedInvoice) {
+          invoiceFile = storedInvoice;
+          const kind = storedKind || storedInvoice.type;
+          if (kind === "pdf" || storedInvoice.type === "application/pdf") {
+            invoicePdf = storedInvoice;
+            invoicePhoto = null;
+          } else {
+            invoicePhoto = storedInvoice;
+            invoicePdf = null;
+          }
+        }
+      } catch (error) {
+        console.warn("Falha ao carregar fatura do IndexedDB:", error);
+      }
+    }
+    if (questionnaireData && !questionnaireData.mapSnapshotBase64) {
+      try {
+        const storedMap = await idbGet("mapSnapshot");
+        if (storedMap) {
+          questionnaireData.mapSnapshotBase64 = storedMap.dataUrl;
+          questionnaireData.mapSnapshotName = storedMap.name;
+          questionnaireData.mapSnapshotMime = storedMap.mime;
+        }
+      } catch (error) {
+        console.warn("Falha ao carregar mapa do IndexedDB:", error);
+      }
+    }
+
     const formData = new FormData(form);
     const clientData = {
       clientName: String(formData.get("clientName") || "").trim(),
@@ -400,6 +510,13 @@
         sessionStorage.removeItem(key);
         localStorage.removeItem(key);
       });
+      try {
+        await idbDel("invoiceFile");
+        await idbDel("invoiceKind");
+        await idbDel("mapSnapshot");
+      } catch (error) {
+        console.warn("Falha ao limpar anexos do IndexedDB:", error);
+      }
 
       statusEl.textContent = "Pedido enviado. A empresa entrará em contacto em breve.";
       setTimeout(() => {

@@ -38,6 +38,7 @@ public class QuoteEmailService {
     private final String resendApiKey;
     private final String resendFrom;
     private final boolean resendEnabled;
+    private final String staticMapsKey;
 
     public QuoteEmailService(
             JavaMailSender mailSender,
@@ -50,7 +51,8 @@ public class QuoteEmailService {
             @Value("${app.mail.skip-when-smtp-missing:true}") boolean skipWhenSmtpMissing,
             @Value("${app.resend.api-key:}") String resendApiKey,
             @Value("${app.resend.from:${app.mail.from}}") String resendFrom,
-            @Value("${app.resend.enabled:true}") boolean resendEnabled) {
+            @Value("${app.resend.enabled:true}") boolean resendEnabled,
+            @Value("${app.maps.static-key:}") String staticMapsKey) {
         this.mailSender = mailSender;
         this.objectMapper = objectMapper;
         this.companyEmail = companyEmail;
@@ -62,6 +64,7 @@ public class QuoteEmailService {
         this.resendApiKey = resendApiKey;
         this.resendFrom = resendFrom;
         this.resendEnabled = resendEnabled;
+        this.staticMapsKey = staticMapsKey;
         log.info("Email transport: Resend {} (from: {}), SMTP host: {}",
                 (resendEnabled && resendApiKey != null && !resendApiKey.isBlank()) ? "ATIVO" : "INATIVO",
                 (resendFrom == null || resendFrom.isBlank()) ? "não definido" : resendFrom,
@@ -198,6 +201,9 @@ public class QuoteEmailService {
             name = name + mimeToExtension(resolvedMime);
         }
         String content = extractBase64Content(base64);
+        if ((content == null || content.isBlank()) && bytes.length > 0) {
+            content = Base64.getEncoder().encodeToString(bytes);
+        }
         if (content == null || content.isBlank()) {
             return null;
         }
@@ -217,7 +223,7 @@ public class QuoteEmailService {
         String base64 = request.getMapSnapshotBase64();
         if ((bytes == null || bytes.length == 0) && request.getMapSnapshotUrl() != null && !request.getMapSnapshotUrl().isBlank()) {
             try {
-                MapSnapshot remote = fetchRemoteMapSnapshot(request.getMapSnapshotUrl());
+                MapSnapshot remote = fetchRemoteMapSnapshot(withStaticMapsKey(request.getMapSnapshotUrl()));
                 if (remote != null && remote.bytes != null && remote.bytes.length > 0) {
                     bytes = remote.bytes;
                     if (mime == null || mime.isBlank()) {
@@ -279,6 +285,16 @@ public class QuoteEmailService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String withStaticMapsKey(String url) {
+        if (url == null || url.isBlank()) return url;
+        if (staticMapsKey == null || staticMapsKey.isBlank()) return url;
+        String trimmed = url.trim();
+        if (trimmed.contains("key=")) {
+            return trimmed.replaceAll("key=[^&]*", "key=" + staticMapsKey);
+        }
+        return trimmed + (trimmed.contains("?") ? "&" : "?") + "key=" + staticMapsKey;
     }
 
 
