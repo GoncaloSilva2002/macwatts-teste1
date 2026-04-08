@@ -116,6 +116,7 @@
             <div>kWp necessário por mês: <strong id="monthlyKwpText">0.0 kWp</strong></div>
             <div>Produção média por painel: <strong id="panelProductionText">0 kWh/mês</strong></div>
             <div>Painéis necessários: <strong id="panelsNeededText">0 painéis</strong></div>
+            <div>Capacidade da bateria: <strong id="batteryCapacityText">Sem bateria</strong></div>
             <div id="powerTermWarning" class="hint"></div>
           </div>
         </div>
@@ -208,6 +209,7 @@
   const monthlyKwpText = document.getElementById("monthlyKwpText");
   const panelProductionText = document.getElementById("panelProductionText");
   const panelsNeededText = document.getElementById("panelsNeededText");
+  const batteryCapacityText = document.getElementById("batteryCapacityText");
   const powerTermWarning = document.getElementById("powerTermWarning");
   const openAdditionalInfo = document.getElementById("openAdditionalInfo");
   const additionalInfoText = document.getElementById("additionalInfoText");
@@ -398,7 +400,13 @@
   function getBatteryLabel() {
     const selected = batteryChoiceInputs.find((input) => input.checked);
     if (!selected) return null;
-    return selected.value === "sim" ? "Sim" : "Não";
+    if (selected.value !== "sim") return "Não";
+    const capacity = getBatteryCapacityKwh(lastPanelsNeeded);
+    if (!capacity) {
+      const panelInfo = lastPanelsNeeded ? ` (${lastPanelsNeeded} painéis)` : "";
+      return `Sem bateria${panelInfo}`;
+    }
+    return `Sim (${capacity} kWh)`;
   }
 
   function getPhaseTypeLabel() {
@@ -436,6 +444,17 @@
     if (kwp <= 11.7) return 22;
     if (kwp <= 13.8) return 26;
     return 26;
+  }
+
+  function getBatteryCapacityKwh(panelsCount) {
+    if (!Number.isFinite(panelsCount) || panelsCount <= 0) return null;
+    if (panelsCount <= 2) return 0;
+    if (panelsCount <= 8) return 5;
+    if (panelsCount <= 12) return 10;
+    if (panelsCount <= 16) return 15;
+    if (panelsCount <= 22) return 20;
+    if (panelsCount <= 26) return 25;
+    return 25;
   }
 
   function roundToOneDecimal(value) {
@@ -520,8 +539,13 @@
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
     panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
     panelsNeededText.textContent = `${panelsNeeded} painéis`;
+    if (batteryCapacityText) {
+      const capacity = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) : 0;
+      batteryCapacityText.textContent = capacity > 0 ? `${capacity} kWh` : "Sem bateria";
+    }
     lastPanelsNeeded = panelsNeeded;
     updatePanelOverlay(panelsNeeded);
+    renderAdditionalSummary();
 
     if (powerTermWarning) {
       const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
@@ -1388,6 +1412,7 @@
       totalPanels += 1;
     }
     const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
+    const batteryCapacityKwh = wantsBattery ? getBatteryCapacityKwh(totalPanels) : null;
 
     if (powerTerm && requiredKva && powerTerm < requiredKva) {
       powerTermWarning.textContent = "Aumentar o termo de potência.";
@@ -1409,6 +1434,7 @@
       monthlyKwpNeeded,
       basePanelsNeeded,
       additionalPanels,
+      batteryCapacityKwh,
       additionalInfo: {
         hasPool: hasPool.checked,
         hasAc: hasAc.checked,

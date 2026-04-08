@@ -68,7 +68,7 @@
         </div>
         <div class="actions">
           <button type="button" class="back" id="backBtn">Voltar ao questionário</button>
-          <button type="submit" class="pdf">Enviar</button>
+          <button type="submit" class="pdf">Enviar pedido</button>
         </div>
       </form>
       <div id="status"></div>
@@ -91,6 +91,32 @@
     const raw = JSON.stringify(value);
     sessionStorage.setItem(key, raw);
     localStorage.setItem(key, raw);
+  }
+
+  function formatBatterySummary(questionnaireData) {
+    const hasBattery = questionnaireData && questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery;
+    if (hasBattery === undefined) return "não disponível";
+    if (!hasBattery) return "Não";
+    const capacityRaw = questionnaireData ? questionnaireData.batteryCapacityKwh : null;
+    const capacity = Number(capacityRaw);
+    if (!Number.isFinite(capacity)) {
+      return "Sim";
+    }
+    if (capacity <= 0) {
+      return "Sem bateria";
+    }
+    return `Sim (${capacity.toFixed(0)} kWh)`;
+  }
+
+  function formatBatteryCapacity(questionnaireData) {
+    const hasBattery = questionnaireData && questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery;
+    if (!hasBattery) return "Sem bateria";
+    const capacityRaw = questionnaireData ? questionnaireData.batteryCapacityKwh : null;
+    const capacity = Number(capacityRaw);
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+      return "Sem bateria";
+    }
+    return `${capacity.toFixed(0)} kWh`;
   }
 
   const backBtn = document.getElementById("backBtn");
@@ -152,11 +178,7 @@
       return value === "monofasica" ? "Monofásica" : "Trifásica";
     })();
 
-    const batteryLabel = (() => {
-      const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery;
-      if (value === undefined) return "não disponível";
-      return value ? "Sim" : "Não";
-    })();
+    const batteryLabel = formatBatterySummary(questionnaireData);
 
     sumProperty.textContent = `Tipo de imóvel: ${questionnaireData.propertyType || "não disponível"}`;
     sumPrice.textContent = `Preço da luz: ${Number(questionnaireData.priceLight || 0).toFixed(0)}€`;
@@ -269,7 +291,8 @@
     }
 
     if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery !== undefined) {
-      lines.push(`Bateria: ${questionnaireData.additionalInfo.hasBattery ? "Sim" : "Não"}`);
+      lines.push(`Bateria: ${formatBatterySummary(questionnaireData)}`);
+      lines.push(`Capacidade da bateria: ${formatBatteryCapacity(questionnaireData)}`);
     }
 
     const extras = [];
@@ -377,7 +400,7 @@
         localStorage.removeItem(key);
       });
 
-      statusEl.textContent = "Pedido enviado com sucesso.";
+      statusEl.textContent = "Pedido enviado. A empresa entrará em contacto em breve.";
       setTimeout(() => {
         window.location.href = "geocoding.html";
       }, 1200);

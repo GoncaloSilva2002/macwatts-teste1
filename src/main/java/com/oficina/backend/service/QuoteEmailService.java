@@ -92,32 +92,6 @@ public class QuoteEmailService {
         byte[] mapSnapshot = decodeBase64(request.getMapSnapshotBase64());
 
         boolean companySent = false;
-        boolean clientSent = false;
-        Exception clientError = null;
-
-        try {
-            sendEmail(
-                    request.getClientEmail().trim(),
-                    "Pedido de Orçamento Solar",
-                    buildClientBody(request),
-                    invoicePrimary,
-                    request.getInvoiceAttachmentName(),
-                    request.getInvoiceAttachmentMime(),
-                    invoiceAlt,
-                    request.getInvoiceAttachmentNameAlt(),
-                    request.getInvoiceAttachmentMimeAlt(),
-                    request.getInvoiceAttachmentBase64(),
-                    request.getInvoiceAttachmentBase64Alt(),
-                    null,
-                    null,
-                    null,
-                    null
-            );
-            clientSent = true;
-        } catch (Exception ex) {
-            clientError = ex;
-            log.warn("Falha ao enviar email para o cliente: {}", ex.getMessage());
-        }
 
         sendEmail(
                 companyEmail.trim(),
@@ -138,13 +112,6 @@ public class QuoteEmailService {
         );
         companySent = true;
 
-        if (!companySent && clientError != null) {
-            throw clientError;
-        }
-        if (!clientSent && clientError != null) {
-            // Não bloqueia o envio para a empresa, mas sinaliza no backend.
-            log.warn("Email enviado para a empresa, mas falhou para o cliente.");
-        }
         return true;
     }
 
@@ -154,32 +121,6 @@ public class QuoteEmailService {
         byte[] mapSnapshot = decodeBase64(request.getMapSnapshotBase64());
 
         boolean companySent = false;
-        boolean clientSent = false;
-        Exception clientError = null;
-
-        try {
-            sendResendEmail(
-                    request.getClientEmail().trim(),
-                    "Pedido de Orçamento Solar",
-                    buildClientBody(request),
-                    invoicePrimary,
-                    request.getInvoiceAttachmentName(),
-                    request.getInvoiceAttachmentMime(),
-                    invoiceAlt,
-                    request.getInvoiceAttachmentNameAlt(),
-                    request.getInvoiceAttachmentMimeAlt(),
-                    request.getInvoiceAttachmentBase64(),
-                    request.getInvoiceAttachmentBase64Alt(),
-                    null,
-                    null,
-                    null,
-                    null
-            );
-            clientSent = true;
-        } catch (Exception ex) {
-            clientError = ex;
-            log.warn("Falha ao enviar email (Resend) para o cliente: {}", ex.getMessage());
-        }
 
         sendResendEmail(
                 companyEmail.trim(),
@@ -200,12 +141,6 @@ public class QuoteEmailService {
         );
         companySent = true;
 
-        if (!companySent && clientError != null) {
-            throw clientError;
-        }
-        if (!clientSent && clientError != null) {
-            log.warn("Email enviado para a empresa, mas falhou para o cliente.");
-        }
         return true;
     }
 
