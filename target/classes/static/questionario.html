@@ -1419,6 +1419,7 @@
     }
 
     const mapSnapshot = await generateMapSnapshot();
+    const mapSnapshotUrl = buildStaticMapUrl();
     const payload = {
       propertyType: formData.get("propertyType"),
       priceLight: priceValueNumber,
@@ -1450,6 +1451,7 @@
       mapSnapshotBase64: mapSnapshot ? mapSnapshot.dataUrl : null,
       mapSnapshotName: mapSnapshot ? mapSnapshot.name : null,
       mapSnapshotMime: mapSnapshot ? mapSnapshot.mime : null,
+      mapSnapshotUrl,
       panelsNeeded: totalPanels,
       updatedAt: new Date().toISOString()
     };

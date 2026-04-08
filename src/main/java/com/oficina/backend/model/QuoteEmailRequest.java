@@ -20,6 +20,7 @@ public class QuoteEmailRequest {
     private String mapSnapshotBase64;
     private String mapSnapshotName;
     private String mapSnapshotMime;
+    private String mapSnapshotUrl;
 
     public String getClientName() {
         return clientName;
@@ -163,5 +164,13 @@ public class QuoteEmailRequest {
 
     public void setMapSnapshotMime(String mapSnapshotMime) {
         this.mapSnapshotMime = mapSnapshotMime;
+    }
+
+    public String getMapSnapshotUrl() {
+        return mapSnapshotUrl;
+    }
+
+    public void setMapSnapshotUrl(String mapSnapshotUrl) {
+        this.mapSnapshotUrl = mapSnapshotUrl;
     }
 }

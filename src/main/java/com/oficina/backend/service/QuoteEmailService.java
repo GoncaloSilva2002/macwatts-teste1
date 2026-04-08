@@ -89,7 +89,7 @@ public class QuoteEmailService {
 
         byte[] invoicePrimary = decodeBase64(request.getInvoiceAttachmentBase64());
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
-        byte[] mapSnapshot = decodeBase64(request.getMapSnapshotBase64());
+        MapSnapshot mapSnapshot = resolveMapSnapshot(request);
 
         boolean companySent = false;
 
@@ -105,10 +105,10 @@ public class QuoteEmailService {
                 request.getInvoiceAttachmentMimeAlt(),
                 request.getInvoiceAttachmentBase64(),
                 request.getInvoiceAttachmentBase64Alt(),
-                mapSnapshot,
-                request.getMapSnapshotName(),
-                request.getMapSnapshotMime(),
-                request.getMapSnapshotBase64()
+                mapSnapshot.bytes,
+                mapSnapshot.name,
+                mapSnapshot.mime,
+                mapSnapshot.base64
         );
         companySent = true;
 
@@ -118,7 +118,7 @@ public class QuoteEmailService {
     private boolean sendQuoteViaResend(QuoteEmailRequest request) throws Exception {
         byte[] invoicePrimary = decodeBase64(request.getInvoiceAttachmentBase64());
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
-        byte[] mapSnapshot = decodeBase64(request.getMapSnapshotBase64());
+        MapSnapshot mapSnapshot = resolveMapSnapshot(request);
 
         boolean companySent = false;
 
@@ -134,10 +134,10 @@ public class QuoteEmailService {
                 request.getInvoiceAttachmentMimeAlt(),
                 request.getInvoiceAttachmentBase64(),
                 request.getInvoiceAttachmentBase64Alt(),
-                mapSnapshot,
-                request.getMapSnapshotName(),
-                request.getMapSnapshotMime(),
-                request.getMapSnapshotBase64()
+                mapSnapshot.bytes,
+                mapSnapshot.name,
+                mapSnapshot.mime,
+                mapSnapshot.base64
         );
         companySent = true;
 
@@ -208,6 +208,89 @@ public class QuoteEmailService {
             attachment.put("content_type", resolvedMime);
         }
         return attachment;
+    }
+
+    private MapSnapshot resolveMapSnapshot(QuoteEmailRequest request) {
+        byte[] bytes = decodeBase64(request.getMapSnapshotBase64());
+        String name = trimOrNull(request.getMapSnapshotName());
+        String mime = trimOrNull(request.getMapSnapshotMime());
+        String base64 = request.getMapSnapshotBase64();
+
+        if ((bytes == null || bytes.length == 0) && request.getMapSnapshotUrl() != null && !request.getMapSnapshotUrl().isBlank()) {
+            try {
+                MapSnapshot remote = fetchRemoteMapSnapshot(request.getMapSnapshotUrl());
+                if (remote != null && remote.bytes != null && remote.bytes.length > 0) {
+                    bytes = remote.bytes;
+                    if (mime == null || mime.isBlank()) {
+                        mime = remote.mime;
+                    }
+                    if (name == null || name.isBlank()) {
+                        name = remote.name;
+                    }
+                    if (base64 == null || base64.isBlank()) {
+                        base64 = remote.base64;
+                    }
+                }
+            } catch (Exception ex) {
+                log.warn("Falha ao obter mapa estático: {}", ex.getMessage());
+            }
+        }
+
+        return new MapSnapshot(bytes, name, mime, base64);
+    }
+
+    private MapSnapshot fetchRemoteMapSnapshot(String url) throws Exception {
+        HttpRequest httpRequest = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header("User-Agent", "macwatts-backend")
+                .GET()
+                .build();
+
+        HttpClient client = HttpClient.newHttpClient();
+        HttpResponse<byte[]> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() >= 400) {
+            throw new IllegalStateException("HTTP " + response.statusCode());
+        }
+
+        byte[] bytes = response.body();
+        String contentType = response.headers().firstValue("content-type").orElse(null);
+        String mime = null;
+        if (contentType != null && !contentType.isBlank()) {
+            int semi = contentType.indexOf(';');
+            mime = (semi >= 0 ? contentType.substring(0, semi) : contentType).trim();
+        }
+
+        String base64Content = Base64.getEncoder().encodeToString(bytes != null ? bytes : new byte[0]);
+        String base64 = (mime != null && !mime.isBlank())
+                ? "data:" + mime + ";base64," + base64Content
+                : base64Content;
+
+        String name = "mapa-telhado";
+        if (mime != null && !mime.isBlank()) {
+            name = name + mimeToExtension(mime);
+        }
+
+        return new MapSnapshot(bytes, name, mime, base64);
+    }
+
+    private String trimOrNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private static class MapSnapshot {
+        private final byte[] bytes;
+        private final String name;
+        private final String mime;
+        private final String base64;
+
+        private MapSnapshot(byte[] bytes, String name, String mime, String base64) {
+            this.bytes = bytes;
+            this.name = name;
+            this.mime = mime;
+            this.base64 = base64;
+        }
     }
 
     private byte[] decodeBase64(String base64Raw) {

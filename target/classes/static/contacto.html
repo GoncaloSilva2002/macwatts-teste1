@@ -372,7 +372,8 @@
         invoiceAttachmentMimeAlt: alternativeInvoice ? alternativeInvoice.type : null,
         mapSnapshotBase64: questionnaireData && questionnaireData.mapSnapshotBase64 ? questionnaireData.mapSnapshotBase64 : null,
         mapSnapshotName: questionnaireData && questionnaireData.mapSnapshotName ? questionnaireData.mapSnapshotName : null,
-        mapSnapshotMime: questionnaireData && questionnaireData.mapSnapshotMime ? questionnaireData.mapSnapshotMime : null
+        mapSnapshotMime: questionnaireData && questionnaireData.mapSnapshotMime ? questionnaireData.mapSnapshotMime : null,
+        mapSnapshotUrl: questionnaireData && questionnaireData.mapSnapshotUrl ? questionnaireData.mapSnapshotUrl : null
       };
 
       const response = await fetch("/api/quote/email", {
