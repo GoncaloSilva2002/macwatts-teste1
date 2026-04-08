@@ -90,6 +90,7 @@ public class QuoteEmailService {
         byte[] invoicePrimary = decodeBase64(request.getInvoiceAttachmentBase64());
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
         MapSnapshot mapSnapshot = resolveMapSnapshot(request);
+        log.info("Mapa (SMTP): base64={}, url={}", isPresent(request.getMapSnapshotBase64()), trimOrNull(request.getMapSnapshotUrl()));
 
         boolean companySent = false;
 
@@ -119,6 +120,7 @@ public class QuoteEmailService {
         byte[] invoicePrimary = decodeBase64(request.getInvoiceAttachmentBase64());
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
         MapSnapshot mapSnapshot = resolveMapSnapshot(request);
+        log.info("Mapa (Resend): base64={}, url={}", isPresent(request.getMapSnapshotBase64()), trimOrNull(request.getMapSnapshotUrl()));
 
         boolean companySent = false;
 
@@ -215,6 +217,11 @@ public class QuoteEmailService {
         String name = trimOrNull(request.getMapSnapshotName());
         String mime = trimOrNull(request.getMapSnapshotMime());
         String base64 = request.getMapSnapshotBase64();
+        log.info("Mapa recebido: base64Bytes={}, name={}, mime={}, url={}",
+                bytes != null ? bytes.length : 0,
+                name,
+                mime,
+                trimOrNull(request.getMapSnapshotUrl()));
 
         if ((bytes == null || bytes.length == 0) && request.getMapSnapshotUrl() != null && !request.getMapSnapshotUrl().isBlank()) {
             try {
@@ -248,6 +255,7 @@ public class QuoteEmailService {
 
         HttpClient client = HttpClient.newHttpClient();
         HttpResponse<byte[]> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofByteArray());
+        log.info("Mapa remoto: status={}, bytes={}", response.statusCode(), response.body() != null ? response.body().length : 0);
         if (response.statusCode() >= 400) {
             throw new IllegalStateException("HTTP " + response.statusCode());
         }
@@ -277,6 +285,10 @@ public class QuoteEmailService {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean isPresent(String value) {
+        return value != null && !value.isBlank();
     }
 
     private static class MapSnapshot {
