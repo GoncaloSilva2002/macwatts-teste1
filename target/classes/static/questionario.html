@@ -48,6 +48,48 @@
               <div class="hint" id="invoiceStatus">Opcional. Adicionar a Fatura para obter uma proposta mais personalizada</div>
             </div>
           </div>
+          <div class="energy-charts">
+            <div class="chart-card">
+              <div class="chart-title">Destino da produção mensal</div>
+              <div class="chart-row">
+                <div class="chart-label">Para a Habitação</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-green" id="chartHomeFill">
+                    <span class="chart-value" id="chartHomePct">0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-row">
+                <div class="chart-label">Para a Rede</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-dark" id="chartGridFill">
+                    <span class="chart-value" id="chartGridPct">0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-caption" id="chartHomeCaption">0 kWh para a habitação</div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">Origem do consumo mensal</div>
+              <div class="chart-row">
+                <div class="chart-label">Do Sistema Fotovoltaico</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-blue" id="chartSystemFill">
+                    <span class="chart-value" id="chartSystemPct">0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-row">
+                <div class="chart-label">Da Rede</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-yellow" id="chartNetworkFill">
+                    <span class="chart-value" id="chartNetworkPct">0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="chart-caption" id="chartNetworkCaption">0 kWh da rede</div>
+            </div>
+          </div>
     </article>
 
     <article class="card">
@@ -95,7 +137,7 @@
         </div>
         <hr class="divider" />
         <div>
-          <label class="label" for="priceLight">Preço da Eletricidade S/Iva</label>
+          <label class="label" for="priceLight">Preço da Eletricidade (S/Iva)</label>
           <div class="price-slider-wrap">
             <div class="price-value" id="priceValue">0€</div>
             <input id="priceLight" name="priceLight" type="range" min="0" max="2000" step="1" value="0">
@@ -112,7 +154,7 @@
           </div>
           <div class="calc-box">
             <div>Consumo total por mês: <strong id="monthlyKwhTotalText">0.0 kWh</strong></div>
-            <div>Consumo coberto: <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
+            <div>Consumo coberto no Periodo Solar: <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
             <div>kWp necessário por mês: <strong id="monthlyKwpText">0.0 kWp</strong></div>
             <div>Produção média por painel: <strong id="panelProductionText">0 kWh/mês</strong></div>
             <div>Painéis necessários: <strong id="panelsNeededText">0 painéis</strong></div>
@@ -243,6 +285,16 @@
   const panelsNeededText = document.getElementById("panelsNeededText");
   const batteryCapacityText = document.getElementById("batteryCapacityText");
   const powerTermWarning = document.getElementById("powerTermWarning");
+  const chartHomeFill = document.getElementById("chartHomeFill");
+  const chartHomePct = document.getElementById("chartHomePct");
+  const chartGridFill = document.getElementById("chartGridFill");
+  const chartGridPct = document.getElementById("chartGridPct");
+  const chartSystemFill = document.getElementById("chartSystemFill");
+  const chartSystemPct = document.getElementById("chartSystemPct");
+  const chartNetworkFill = document.getElementById("chartNetworkFill");
+  const chartNetworkPct = document.getElementById("chartNetworkPct");
+  const chartHomeCaption = document.getElementById("chartHomeCaption");
+  const chartNetworkCaption = document.getElementById("chartNetworkCaption");
   const openAdditionalInfo = document.getElementById("openAdditionalInfo");
   const additionalInfoText = document.getElementById("additionalInfoText");
   const additionalModal = document.getElementById("additionalModal");
@@ -578,6 +630,37 @@
     lastPanelsNeeded = panelsNeeded;
     updatePanelOverlay(panelsNeeded);
     renderAdditionalSummary();
+
+    const productionMonthly = productionPerPanel * panelsNeeded;
+    const homeFromCovered = Math.min(monthlyKwhCovered, productionMonthly);
+    const gridFromCovered = Math.max(0, monthlyKwhCovered - homeFromCovered);
+    const homeFromTotal = Math.min(monthlyKwhTotal, productionMonthly);
+    const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal);
+
+    const coveredBase = monthlyKwhCovered > 0 ? monthlyKwhCovered : 0;
+    const totalBase = monthlyKwhTotal > 0 ? monthlyKwhTotal : 0;
+
+    const homeCoveredPct = coveredBase ? (homeFromCovered / coveredBase) * 100 : 0;
+    const gridCoveredPct = coveredBase ? (gridFromCovered / coveredBase) * 100 : 0;
+    const systemPct = totalBase ? (homeFromTotal / totalBase) * 100 : 0;
+    const networkPct = totalBase ? (gridFromTotal / totalBase) * 100 : 0;
+
+    if (chartHomeFill && chartGridFill && chartSystemFill && chartNetworkFill) {
+      chartHomeFill.style.width = `${homeCoveredPct.toFixed(1)}%`;
+      chartGridFill.style.width = `${gridCoveredPct.toFixed(1)}%`;
+      chartSystemFill.style.width = `${systemPct.toFixed(1)}%`;
+      chartNetworkFill.style.width = `${networkPct.toFixed(1)}%`;
+    }
+    if (chartHomePct && chartGridPct && chartSystemPct && chartNetworkPct) {
+      chartHomePct.textContent = `${homeCoveredPct.toFixed(0)}%`;
+      chartGridPct.textContent = `${gridCoveredPct.toFixed(0)}%`;
+      chartSystemPct.textContent = `${systemPct.toFixed(0)}%`;
+      chartNetworkPct.textContent = `${networkPct.toFixed(0)}%`;
+    }
+    if (chartHomeCaption && chartNetworkCaption) {
+      chartHomeCaption.textContent = `${homeFromCovered.toFixed(0)} kWh para a habitação`;
+      chartNetworkCaption.textContent = `${gridFromTotal.toFixed(0)} kWh da rede`;
+    }
 
     if (powerTermWarning) {
       const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
