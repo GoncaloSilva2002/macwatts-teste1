@@ -629,28 +629,52 @@
 
     const productionMonthly = productionPerPanel * panelsNeeded;
     const homeFromCovered = monthlyKwhCovered;
-    const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhCovered);
+    const batteryFromCovered = wantsBattery ? Math.max(0, monthlyKwhTotal - monthlyKwhCovered) : 0;
+    const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhTotal);
     const homeFromTotal = Math.min(monthlyKwhTotal, monthlyKwhCovered);
     const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal);
 
-    const coveredBase = (homeFromCovered + gridFromCovered) > 0 ? (homeFromCovered + gridFromCovered) : 0;
+    const coveredBase = (homeFromCovered + batteryFromCovered + gridFromCovered) > 0
+      ? (homeFromCovered + batteryFromCovered + gridFromCovered)
+      : 0;
     const totalBase = monthlyKwhTotal > 0 ? monthlyKwhTotal : 0;
 
     const homeCoveredPct = coveredBase ? (homeFromCovered / coveredBase) * 100 : 0;
+    const batteryProdPct = coveredBase ? (batteryFromCovered / coveredBase) * 100 : 0;
     const gridCoveredPct = coveredBase ? (gridFromCovered / coveredBase) * 100 : 0;
     const systemPct = totalBase ? (homeFromTotal / totalBase) * 100 : 0;
+    const batteryUsePct = 0;
     const networkPct = totalBase ? (gridFromTotal / totalBase) * 100 : 0;
+
+    if (chartBatteryProdRow) {
+      chartBatteryProdRow.style.display = wantsBattery ? "grid" : "none";
+    }
+    if (chartBatteryUseRow) {
+      chartBatteryUseRow.style.display = wantsBattery ? "grid" : "none";
+    }
 
     if (chartHomeFill && chartGridFill && chartSystemFill && chartNetworkFill) {
       chartHomeFill.style.width = `${homeCoveredPct.toFixed(1)}%`;
+      if (chartBatteryProdFill) {
+        chartBatteryProdFill.style.width = `${batteryProdPct.toFixed(1)}%`;
+      }
       chartGridFill.style.width = `${gridCoveredPct.toFixed(1)}%`;
       chartSystemFill.style.width = `${systemPct.toFixed(1)}%`;
+      if (chartBatteryUseFill) {
+        chartBatteryUseFill.style.width = `${batteryUsePct.toFixed(1)}%`;
+      }
       chartNetworkFill.style.width = `${networkPct.toFixed(1)}%`;
     }
     if (chartHomePct && chartGridPct && chartSystemPct && chartNetworkPct) {
       chartHomePct.textContent = `${homeCoveredPct.toFixed(0)}%`;
+      if (chartBatteryProdPct) {
+        chartBatteryProdPct.textContent = `${batteryProdPct.toFixed(0)}%`;
+      }
       chartGridPct.textContent = `${gridCoveredPct.toFixed(0)}%`;
       chartSystemPct.textContent = `${systemPct.toFixed(0)}%`;
+      if (chartBatteryUsePct) {
+        chartBatteryUsePct.textContent = `${batteryUsePct.toFixed(0)}%`;
+      }
       chartNetworkPct.textContent = `${networkPct.toFixed(0)}%`;
     }
     if (chartHomeCaption && chartNetworkCaption) {
