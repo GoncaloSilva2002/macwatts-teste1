@@ -58,13 +58,6 @@
                   <span class="chart-value" id="chartHomePct">0%</span>
                 </div>
               </div>
-              <div class="chart-row" id="chartBatteryProdRow" style="display:none;">
-                <div class="chart-label">Para a Bateria</div>
-                <div class="chart-bar">
-                  <div class="chart-fill chart-orange" id="chartBatteryProdFill"></div>
-                  <span class="chart-value" id="chartBatteryProdPct">0%</span>
-                </div>
-              </div>
               <div class="chart-row">
                 <div class="chart-label">Para a Rede</div>
                 <div class="chart-bar">
@@ -81,13 +74,6 @@
                 <div class="chart-bar">
                   <div class="chart-fill chart-blue" id="chartSystemFill"></div>
                   <span class="chart-value" id="chartSystemPct">0%</span>
-                </div>
-              </div>
-              <div class="chart-row" id="chartBatteryUseRow" style="display:none;">
-                <div class="chart-label">Da Bateria</div>
-                <div class="chart-bar">
-                  <div class="chart-fill chart-orange" id="chartBatteryUseFill"></div>
-                  <span class="chart-value" id="chartBatteryUsePct">0%</span>
                 </div>
               </div>
               <div class="chart-row">
@@ -297,16 +283,10 @@
   const powerTermWarning = document.getElementById("powerTermWarning");
   const chartHomeFill = document.getElementById("chartHomeFill");
   const chartHomePct = document.getElementById("chartHomePct");
-  const chartBatteryProdRow = document.getElementById("chartBatteryProdRow");
-  const chartBatteryProdFill = document.getElementById("chartBatteryProdFill");
-  const chartBatteryProdPct = document.getElementById("chartBatteryProdPct");
   const chartGridFill = document.getElementById("chartGridFill");
   const chartGridPct = document.getElementById("chartGridPct");
   const chartSystemFill = document.getElementById("chartSystemFill");
   const chartSystemPct = document.getElementById("chartSystemPct");
-  const chartBatteryUseRow = document.getElementById("chartBatteryUseRow");
-  const chartBatteryUseFill = document.getElementById("chartBatteryUseFill");
-  const chartBatteryUsePct = document.getElementById("chartBatteryUsePct");
   const chartNetworkFill = document.getElementById("chartNetworkFill");
   const chartNetworkPct = document.getElementById("chartNetworkPct");
   const chartHomeCaption = document.getElementById("chartHomeCaption");
@@ -624,34 +604,13 @@
 
     const monthlyKwhTotal = value / pricePerKwh;
     const monthlyKwhCovered = monthlyKwhTotal * usageFactor;
-
-    const calcPanelsNeeded = (kwhForPanels) => {
-      const requiredKwpRaw = (kwhForPanels / productionPerPanel) * panelPower;
-      const requiredKwpRounded = roundToOneDecimal(requiredKwpRaw);
-      let panelsNeeded = panelsFromKwp(requiredKwpRounded) + getAdditionalCount();
-      if (panelsNeeded % 2 !== 0) {
-        panelsNeeded += 1;
-      }
-      return { panelsNeeded, requiredKwpRounded };
-    };
-
-    let kwhForPanels = monthlyKwhCovered;
-    let panelsNeededResult = calcPanelsNeeded(kwhForPanels);
-
-    if (wantsBattery) {
-      for (let i = 0; i < 3; i += 1) {
-        const capacity = getBatteryCapacityKwh(panelsNeededResult.panelsNeeded) || 0;
-        kwhForPanels = monthlyKwhCovered + capacity * 31;
-        const nextResult = calcPanelsNeeded(kwhForPanels);
-        if (nextResult.panelsNeeded === panelsNeededResult.panelsNeeded) {
-          panelsNeededResult = nextResult;
-          break;
-        }
-        panelsNeededResult = nextResult;
-      }
+    const monthlyKwhForPanels = wantsBattery ? monthlyKwhTotal : monthlyKwhCovered;
+    const requiredKwp = (monthlyKwhForPanels / productionPerPanel) * panelPower;
+    const requiredKwpRounded = roundToOneDecimal(requiredKwp);
+    let panelsNeeded = panelsFromKwp(requiredKwpRounded) + getAdditionalCount();
+    if (panelsNeeded % 2 !== 0) {
+      panelsNeeded += 1;
     }
-
-    const { panelsNeeded, requiredKwpRounded } = panelsNeededResult;
 
     monthlyKwhTotalText.textContent = `${monthlyKwhTotal.toFixed(1)} kWh`;
     monthlyKwhCoveredText.textContent = `${monthlyKwhCovered.toFixed(1)} kWh`;
@@ -678,41 +637,20 @@
     const totalBase = monthlyKwhTotal > 0 ? monthlyKwhTotal : 0;
 
     const homeCoveredPct = coveredBase ? (homeFromCovered / coveredBase) * 100 : 0;
-    const batteryProdPct = 0;
     const gridCoveredPct = coveredBase ? (gridFromCovered / coveredBase) * 100 : 0;
     const systemPct = totalBase ? (homeFromTotal / totalBase) * 100 : 0;
-    const batteryUsePct = 0;
     const networkPct = totalBase ? (gridFromTotal / totalBase) * 100 : 0;
-
-    if (chartBatteryProdRow) {
-      chartBatteryProdRow.style.display = wantsBattery ? "grid" : "none";
-    }
-    if (chartBatteryUseRow) {
-      chartBatteryUseRow.style.display = wantsBattery ? "grid" : "none";
-    }
 
     if (chartHomeFill && chartGridFill && chartSystemFill && chartNetworkFill) {
       chartHomeFill.style.width = `${homeCoveredPct.toFixed(1)}%`;
-      if (chartBatteryProdFill) {
-        chartBatteryProdFill.style.width = `${batteryProdPct.toFixed(1)}%`;
-      }
       chartGridFill.style.width = `${gridCoveredPct.toFixed(1)}%`;
       chartSystemFill.style.width = `${systemPct.toFixed(1)}%`;
-      if (chartBatteryUseFill) {
-        chartBatteryUseFill.style.width = `${batteryUsePct.toFixed(1)}%`;
-      }
       chartNetworkFill.style.width = `${networkPct.toFixed(1)}%`;
     }
     if (chartHomePct && chartGridPct && chartSystemPct && chartNetworkPct) {
       chartHomePct.textContent = `${homeCoveredPct.toFixed(0)}%`;
-      if (chartBatteryProdPct) {
-        chartBatteryProdPct.textContent = `${batteryProdPct.toFixed(0)}%`;
-      }
       chartGridPct.textContent = `${gridCoveredPct.toFixed(0)}%`;
       chartSystemPct.textContent = `${systemPct.toFixed(0)}%`;
-      if (chartBatteryUsePct) {
-        chartBatteryUsePct.textContent = `${batteryUsePct.toFixed(0)}%`;
-      }
       chartNetworkPct.textContent = `${networkPct.toFixed(0)}%`;
     }
     if (chartHomeCaption && chartNetworkCaption) {
