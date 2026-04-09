@@ -628,9 +628,9 @@
     renderAdditionalSummary();
 
     const productionMonthly = productionPerPanel * panelsNeeded;
-    const homeFromCovered = productionMonthly;
+    const homeFromCovered = monthlyKwhCovered;
     const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhCovered);
-    const homeFromTotal = Math.min(monthlyKwhTotal, productionMonthly);
+    const homeFromTotal = Math.min(monthlyKwhTotal, monthlyKwhCovered);
     const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal);
 
     const coveredBase = (homeFromCovered + gridFromCovered) > 0 ? (homeFromCovered + gridFromCovered) : 0;
