@@ -215,7 +215,7 @@ body {
 .energy-charts {
   margin-top: 20px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 18px;
 }
 
@@ -301,6 +301,11 @@ body {
 .chart-caption {
   font-size: 0.82rem;
   color: #64748b;
+}
+
+.chart-caption-list {
+  display: grid;
+  gap: 4px;
 }
 
 form {

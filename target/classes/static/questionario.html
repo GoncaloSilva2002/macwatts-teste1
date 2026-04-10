@@ -72,7 +72,11 @@
                   <span class="chart-value" id="chartGridPct">0%</span>
                 </div>
               </div>
-              <div class="chart-caption" id="chartHomeCaption">0 kWh para a habitação</div>
+              <div class="chart-caption-list">
+                <div class="chart-caption" id="chartHomeCaption">0 kWh para a habitação</div>
+                <div class="chart-caption" id="chartBatteryCaption">0 kWh para a bateria</div>
+                <div class="chart-caption" id="chartGridCaption">0 kWh para a rede</div>
+              </div>
             </div>
             <div class="chart-card">
               <div class="chart-title">Origem do consumo mensal</div>
@@ -97,7 +101,11 @@
                   <span class="chart-value" id="chartNetworkPct">0%</span>
                 </div>
               </div>
-              <div class="chart-caption" id="chartNetworkCaption">0 kWh da rede</div>
+              <div class="chart-caption-list">
+                <div class="chart-caption" id="chartSystemCaption">0 kWh do sistema</div>
+                <div class="chart-caption" id="chartBatteryUseCaption">0 kWh da bateria</div>
+                <div class="chart-caption" id="chartNetworkCaption">0 kWh da rede</div>
+              </div>
             </div>
           </div>
     </article>
@@ -310,6 +318,10 @@
   const chartBatteryProdPct = document.getElementById("chartBatteryProdPct");
   const chartBatteryUsePct = document.getElementById("chartBatteryUsePct");
   const chartHomeCaption = document.getElementById("chartHomeCaption");
+  const chartBatteryCaption = document.getElementById("chartBatteryCaption");
+  const chartGridCaption = document.getElementById("chartGridCaption");
+  const chartSystemCaption = document.getElementById("chartSystemCaption");
+  const chartBatteryUseCaption = document.getElementById("chartBatteryUseCaption");
   const chartNetworkCaption = document.getElementById("chartNetworkCaption");
   const openAdditionalInfo = document.getElementById("openAdditionalInfo");
   const additionalInfoText = document.getElementById("additionalInfoText");
@@ -649,10 +661,19 @@
 
     const productionMonthly = productionPerPanel * panelsNeeded;
     const homeFromCovered = monthlyKwhCovered;
-    const batteryFromCovered = wantsBattery ? Math.max(0, monthlyKwhTotal - monthlyKwhCovered) : 0;
-    const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhTotal);
+    const capacityPerDay = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) || 0 : 0;
+    const batteryCapacityTotal = capacityPerDay * 31;
+    const remainingProduction = Math.max(0, productionMonthly - monthlyKwhCovered);
+    const batteryFromCovered = wantsBattery
+      ? Math.min(remainingProduction, batteryCapacityTotal)
+      : 0;
+    const gridFromCovered = Math.max(0, productionMonthly - monthlyKwhCovered - batteryFromCovered);
     const homeFromTotal = Math.min(monthlyKwhTotal, monthlyKwhCovered);
-    const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal);
+    const missingConsumption = Math.max(0, monthlyKwhTotal - homeFromTotal);
+    const batteryFromTotal = wantsBattery
+      ? Math.min(batteryFromCovered, missingConsumption)
+      : 0;
+    const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal - batteryFromTotal);
 
     const coveredBase = (homeFromCovered + batteryFromCovered + gridFromCovered) > 0
       ? (homeFromCovered + batteryFromCovered + gridFromCovered)
@@ -663,7 +684,7 @@
     const batteryProdPct = coveredBase ? (batteryFromCovered / coveredBase) * 100 : 0;
     const gridCoveredPct = coveredBase ? (gridFromCovered / coveredBase) * 100 : 0;
     const systemPct = totalBase ? (homeFromTotal / totalBase) * 100 : 0;
-    const batteryUsePct = 0;
+    const batteryUsePct = totalBase ? (batteryFromTotal / totalBase) * 100 : 0;
     const networkPct = totalBase ? (gridFromTotal / totalBase) * 100 : 0;
 
     if (chartBatteryProdRow) {
@@ -697,8 +718,24 @@
       }
       chartNetworkPct.textContent = `${networkPct.toFixed(0)}%`;
     }
-    if (chartHomeCaption && chartNetworkCaption) {
+    if (chartHomeCaption) {
       chartHomeCaption.textContent = `${homeFromCovered.toFixed(0)} kWh para a habitação`;
+    }
+    if (chartBatteryCaption) {
+      chartBatteryCaption.textContent = `${batteryFromCovered.toFixed(0)} kWh para a bateria`;
+      chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
+    }
+    if (chartGridCaption) {
+      chartGridCaption.textContent = `${gridFromCovered.toFixed(0)} kWh para a rede`;
+    }
+    if (chartSystemCaption) {
+      chartSystemCaption.textContent = `${homeFromTotal.toFixed(0)} kWh do sistema`;
+    }
+    if (chartBatteryUseCaption) {
+      chartBatteryUseCaption.textContent = `${batteryFromTotal.toFixed(0)} kWh da bateria`;
+      chartBatteryUseCaption.style.display = wantsBattery ? "block" : "none";
+    }
+    if (chartNetworkCaption) {
       chartNetworkCaption.textContent = `${gridFromTotal.toFixed(0)} kWh da rede`;
     }
 
