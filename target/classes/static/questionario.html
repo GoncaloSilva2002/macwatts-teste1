@@ -637,6 +637,9 @@
       : usageTime === "noites" ? 0.28
       : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
+    const batteryEfficiency = 0.9;
+    const inverterEfficiency = 0.95;
+    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
 
     const monthlyKwhTotal = value / pricePerKwh;
     const monthlyKwhCovered = monthlyKwhTotal * usageFactor;
@@ -675,7 +678,7 @@
     const homeFromTotal = Math.min(monthlyKwhTotal, monthlyKwhCovered);
     const missingConsumption = Math.max(0, monthlyKwhTotal - homeFromTotal);
     const batteryFromTotal = wantsBattery
-      ? Math.min(batteryFromCovered, missingConsumption)
+      ? Math.min(batteryFromCovered * batteryUseEfficiency, missingConsumption)
       : 0;
     const gridFromTotal = Math.max(0, monthlyKwhTotal - homeFromTotal - batteryFromTotal);
 
