@@ -631,7 +631,11 @@
     const panelPower = 0.53;
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
-    const usageFactor = usageTime === "noites" ? 0.28 : 0.61;
+    const usageFactor =
+      usageTime === "manhas" ? 0.41
+      : usageTime === "tardes" ? 0.20
+      : usageTime === "noites" ? 0.28
+      : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
 
     const monthlyKwhTotal = value / pricePerKwh;
@@ -1594,7 +1598,11 @@
     const panelPower = 0.53;
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
-    const usageFactor = usageTime === "noites" ? 0.28 : 0.61;
+    const usageFactor =
+      usageTime === "manhas" ? 0.41
+      : usageTime === "tardes" ? 0.20
+      : usageTime === "noites" ? 0.28
+      : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
 
     const monthlyKwhEstimate = priceValueNumber / pricePerKwh;
