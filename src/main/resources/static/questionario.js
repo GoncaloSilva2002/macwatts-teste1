@@ -433,7 +433,7 @@
     const productionMonthly = productionPerPanel * panelsNeeded;
     const homeFromCovered = monthlyKwhCovered;
     const capacityPerDay = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) || 0 : 0;
-    const batteryCapacityTotal = capacityPerDay * 30;
+    const batteryCapacityTotal = capacityPerDay * 31 * 0.85;
     const remainingProduction = Math.max(0, productionMonthly - monthlyKwhCovered);
     const batteryFromCovered = wantsBattery
       ? Math.min(remainingProduction, batteryCapacityTotal)
