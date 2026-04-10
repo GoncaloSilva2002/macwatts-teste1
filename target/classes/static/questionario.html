@@ -58,6 +58,13 @@
                   <span class="chart-value" id="chartHomePct">0%</span>
                 </div>
               </div>
+              <div class="chart-row" id="chartBatteryProdRow">
+                <div class="chart-label">Para a Bateria</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-orange" id="chartBatteryProdFill"></div>
+                  <span class="chart-value" id="chartBatteryProdPct">0%</span>
+                </div>
+              </div>
               <div class="chart-row">
                 <div class="chart-label">Para a Rede</div>
                 <div class="chart-bar">
@@ -74,6 +81,13 @@
                 <div class="chart-bar">
                   <div class="chart-fill chart-blue" id="chartSystemFill"></div>
                   <span class="chart-value" id="chartSystemPct">0%</span>
+                </div>
+              </div>
+              <div class="chart-row" id="chartBatteryUseRow">
+                <div class="chart-label">Da Bateria</div>
+                <div class="chart-bar">
+                  <div class="chart-fill chart-teal" id="chartBatteryUseFill"></div>
+                  <span class="chart-value" id="chartBatteryUsePct">0%</span>
                 </div>
               </div>
               <div class="chart-row">
@@ -289,6 +303,12 @@
   const chartSystemPct = document.getElementById("chartSystemPct");
   const chartNetworkFill = document.getElementById("chartNetworkFill");
   const chartNetworkPct = document.getElementById("chartNetworkPct");
+  const chartBatteryProdRow = document.getElementById("chartBatteryProdRow");
+  const chartBatteryUseRow = document.getElementById("chartBatteryUseRow");
+  const chartBatteryProdFill = document.getElementById("chartBatteryProdFill");
+  const chartBatteryUseFill = document.getElementById("chartBatteryUseFill");
+  const chartBatteryProdPct = document.getElementById("chartBatteryProdPct");
+  const chartBatteryUsePct = document.getElementById("chartBatteryUsePct");
   const chartHomeCaption = document.getElementById("chartHomeCaption");
   const chartNetworkCaption = document.getElementById("chartNetworkCaption");
   const openAdditionalInfo = document.getElementById("openAdditionalInfo");
