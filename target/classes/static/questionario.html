@@ -632,8 +632,8 @@
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
     const usageFactor =
-      usageTime === "manhas" ? 0.41
-      : usageTime === "tardes" ? 0.20
+      usageTime === "manhas" ? 0.71
+      : usageTime === "tardes" ? 0.88
       : usageTime === "noites" ? 0.28
       : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
@@ -666,7 +666,7 @@
     const productionMonthly = productionPerPanel * panelsNeeded;
     const homeFromCovered = monthlyKwhCovered;
     const capacityPerDay = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) || 0 : 0;
-    const batteryCapacityTotal = capacityPerDay * 31;
+    const batteryCapacityTotal = capacityPerDay * 30;
     const remainingProduction = Math.max(0, productionMonthly - monthlyKwhCovered);
     const batteryFromCovered = wantsBattery
       ? Math.min(remainingProduction, batteryCapacityTotal)
@@ -1599,8 +1599,8 @@
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
     const usageFactor =
-      usageTime === "manhas" ? 0.41
-      : usageTime === "tardes" ? 0.20
+      usageTime === "manhas" ? 0.71
+      : usageTime === "tardes" ? 0.88
       : usageTime === "noites" ? 0.28
       : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
