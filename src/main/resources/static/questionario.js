@@ -430,7 +430,7 @@
     updatePanelOverlay(panelsNeeded);
     renderAdditionalSummary();
 
-    const productionMonthly = productionPerPanel * panelsNeeded;
+    const productionMonthly = (productionPerPanel * panelsNeeded) * 0.65;
     const homeFromCovered = monthlyKwhCovered;
     const capacityPerDay = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) || 0 : 0;
     const batteryCapacityTotal = capacityPerDay * 31 * 0.85;
