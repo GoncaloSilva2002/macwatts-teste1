@@ -431,6 +431,7 @@
     renderAdditionalSummary();
 
     const productionMonthly = productionPerPanel * panelsNeeded;
+    const alignmentFactor = 0.85; // 85% eficiência temporal (ajustável)
 
     // --- CONSUMO ---
     const consumoTotal = monthlyKwhTotal;
@@ -438,7 +439,7 @@
     const consumoNoite = consumoTotal - consumoSolar;
 
     // --- DIRETO ---
-    const homeFromTotal = Math.min(productionMonthly, consumoSolar);
+    const homeFromTotal = Math.min(productionMonthly, consumoSolar * alignmentFactor);
 
     // --- EXCEDENTE ---
     const excedente = Math.max(0, productionMonthly - homeFromTotal);
