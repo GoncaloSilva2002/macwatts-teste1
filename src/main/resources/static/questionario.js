@@ -455,15 +455,15 @@
 
     const bateriaDaily = Math.min(capacidadeDia, excedenteDaily);
 
-    const batteryFromTotal = wantsBattery
-      ? Math.min(bateriaDaily * 30 * batteryUseEfficiency, consumoNoite)
-      : 0;
+    const batteryCharge = wantsBattery ? Math.min(excedente, bateriaDaily * 30) : 0;
+
+    const batteryFromTotal = wantsBattery ? Math.min(batteryCharge * batteryUseEfficiency, consumoNoite) : 0;
 
     // --- REDE ---
     const gridFromTotal = Math.max(0, consumoTotal - homeFromTotal - batteryFromTotal);
 
     // --- EXPORTAÇÃO ---
-    const gridFromCovered = Math.max(0, excedente - batteryFromTotal);
+    const gridFromCovered = Math.max(0, excedente - batteryCharge);
 
     // --- PRODUÇÃO DISTRIBUIÇÃO ---
     const homeFromCovered = homeFromTotal;
