@@ -456,7 +456,7 @@
     const batteryFromTotal = wantsBattery ? batteryCharge * batteryUseEfficiency : 0;
 
     // --- REDE ---
-    const gridFromTotal =consumoTotal - homeFromTotal - batteryFromTotal;
+    const gridFromTotal =consumoTotal - (homeFromTotal - batteryFromTotal);
 
     // --- EXPORTAÇÃO ---
     const gridFromCovered = excedente - batteryCharge;
@@ -466,7 +466,7 @@
     const batteryFromCovered = batteryFromTotal;
 
     // --- BASES ---
-    const coveredBase = productionMonthly;
+    const coveredBase = homeFromTotal;
     const totalBase = consumoTotal;
 
     // --- PERCENTAGENS PRODUÇÃO ---
