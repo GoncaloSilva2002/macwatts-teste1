@@ -395,11 +395,7 @@
     const panelPower = 0.53;
     const productionPerPanel = ZONE_PANEL_MONTHLY_KWH[currentZoneLabel] ?? DEFAULT_PANEL_MONTHLY_KWH;
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
-    const usageFactor =
-      usageTime === "manhas" ? 0.71
-      : usageTime === "tardes" ? 0.88
-      : usageTime === "noites" ? 0.28
-      : 0.61;
+    const usageFactor = usageTime === "manhas" ? 0.71 : usageTime === "tardes" ? 0.88 : usageTime === "noites" ? 0.28 : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
     const batteryEfficiency = 0.9;
     const inverterEfficiency = 0.95;
@@ -467,10 +463,11 @@
 
     // --- PRODUÇÃO DISTRIBUIÇÃO ---
     const homeFromCovered = homeFromTotal;
+    // Para o gráfico de produção, mostramos a energia efetivamente utilizada (já com perdas).
     const batteryFromCovered = batteryFromTotal;
 
     // --- BASES ---
-    const coveredBase = productionMonthly;
+    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
     const totalBase = consumoTotal;
 
     // --- PERCENTAGENS PRODUÇÃO ---

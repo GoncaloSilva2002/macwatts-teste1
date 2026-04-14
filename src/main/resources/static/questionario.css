@@ -145,65 +145,6 @@ body {
   overflow: hidden;
 }
 
-.compass {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  box-shadow: 0 10px 18px rgba(15, 23, 42, 0.2);
-  pointer-events: none;
-  z-index: 600;
-}
-
-.compass::before {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 0;
-  border-left: 6px solid transparent;
-  border-right: 6px solid transparent;
-  border-bottom: 14px solid #22c55e;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35));
-}
-
-.compass .north {
-  margin-top: 6px;
-}
-
-.compass .dir {
-  position: absolute;
-  font-size: 0.6rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.78);
-  letter-spacing: 0.04em;
-}
-
-.compass .dir.e {
-  right: 6px;
-}
-
-.compass .dir.s {
-  bottom: 4px;
-}
-
-.compass .dir.o {
-  left: 6px;
-}
-
 .meta {
   margin-top: 10px;
   display: grid;
