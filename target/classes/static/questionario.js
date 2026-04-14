@@ -435,39 +435,38 @@
     const consumoNoite = consumoTotal - consumoSolar;
 
     // --- DIRETO ---
-    const homeFromTotal = Math.min(productionMonthly, consumoSolar * alignmentFactor);
+    const homeFromTotal = productionMonthly * alignmentFactor;
 
     // --- EXCEDENTE ---
-    const excedente = Math.max(0, productionMonthly - homeFromTotal);
+    const excedente = homeFromTotal - consumoSolar;
 
     // --- BATERIA (FIX REALISTA) ---
-    const productionDaily = productionMonthly / 30;
+    const productionDaily = homeFromTotal / 30;
     const consumoSolarDaily = consumoSolar / 30;
 
-    const excedenteDaily = Math.max(0, productionDaily - consumoSolarDaily);
+    const excedenteDaily = productionDaily - consumoSolarDaily;
 
     const capacityPerDay = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) || 0 : 0;
     const capacidadeDia = wantsBattery ? capacityPerDay : 0;
 
-    const bateriaDaily = Math.min(capacidadeDia, excedenteDaily);
+    const bateriaDaily = capacidadeDia;
 
-    const batteryCharge = wantsBattery ? Math.min(excedente, bateriaDaily * 30) : 0;
+    const batteryCharge = wantsBattery ?  bateriaDaily * 30 : 0;
 
-    const batteryFromTotal = wantsBattery ? Math.min(batteryCharge * batteryUseEfficiency, consumoNoite) : 0;
+    const batteryFromTotal = wantsBattery ? batteryCharge * batteryUseEfficiency : 0;
 
     // --- REDE ---
-    const gridFromTotal = Math.max(0, consumoTotal - homeFromTotal - batteryFromTotal);
+    const gridFromTotal =consumoTotal - homeFromTotal - batteryFromTotal;
 
     // --- EXPORTAÇÃO ---
-    const gridFromCovered = Math.max(0, excedente - batteryCharge);
+    const gridFromCovered = excedente - batteryCharge;
 
     // --- PRODUÇÃO DISTRIBUIÇÃO ---
     const homeFromCovered = homeFromTotal;
-    // Para o gráfico de produção, mostramos a energia efetivamente utilizada (já com perdas).
     const batteryFromCovered = batteryFromTotal;
 
     // --- BASES ---
-    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
+    const coveredBase = productionMonthly;
     const totalBase = consumoTotal;
 
     // --- PERCENTAGENS PRODUÇÃO ---
