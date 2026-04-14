@@ -397,10 +397,6 @@
     const usageTime = usageTimeInputs.find((input) => input.checked)?.value || null;
     const usageFactor = usageTime === "manhas" ? 0.71 : usageTime === "tardes" ? 0.88 : usageTime === "noites" ? 0.28 : 0.61;
     const wantsBattery = batteryChoiceInputs.find((input) => input.checked)?.value === "sim";
-    const batteryEfficiency = 0.9;
-    const inverterEfficiency = 0.95;
-    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
-
     const monthlyKwhTotal = value / pricePerKwh;
     const monthlyKwhCovered = monthlyKwhTotal * usageFactor;
     const monthlyKwhForPanels = wantsBattery ? monthlyKwhTotal : monthlyKwhCovered;
@@ -426,8 +422,17 @@
     updatePanelOverlay(panelsNeeded);
     renderAdditionalSummary();
 
+
+
+
+    const batteryEfficiency = 0.9;
+    const inverterEfficiency = 0.95;
+    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
+
+
     const productionMonthly = productionPerPanel * panelsNeeded;
     const alignmentFactor = 0.85; // 85% eficiência temporal (ajustável)
+    const producaoperca = productionMonthly * alignmentFactor;
 
     // --- CONSUMO ---
     const consumoTotal = monthlyKwhTotal;
@@ -435,13 +440,13 @@
     const consumoNoite = consumoTotal - consumoSolar;
 
     // --- DIRETO ---
-    const homeFromTotal = productionMonthly * alignmentFactor;
+    const homeFromTotal = consumoSolar;
 
     // --- EXCEDENTE ---
-    const excedente = homeFromTotal - consumoSolar;
+    const excedente = producaoperca - consumoSolar;
 
     // --- BATERIA (FIX REALISTA) ---
-    const productionDaily = homeFromTotal / 30;
+    const productionDaily = producaoperca / 30;
     const consumoSolarDaily = consumoSolar / 30;
 
     const excedenteDaily = productionDaily - consumoSolarDaily;
@@ -456,7 +461,7 @@
     const batteryFromTotal = wantsBattery ? batteryCharge * batteryUseEfficiency : 0;
 
     // --- REDE ---
-    const gridFromTotal =consumoTotal - (homeFromTotal - batteryFromTotal);
+    const gridFromTotal =consumoTotal - (homeFromTotal + batteryFromTotal);
 
     // --- EXPORTAÇÃO ---
     const gridFromCovered = excedente - batteryCharge;
