@@ -463,10 +463,21 @@
     const roundPct1 = (value) => Math.round(clampPct(value) * 10) / 10;
     const roundPct0 = (value) => Math.round(clampPct(value));
 
-    // Destino da produção: garantir que a soma é sempre 100%.
-    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
-    const homeCoveredPct = coveredBase ? clampPct((homeFromCovered / coveredBase) * 100) : 0;
-    const batteryProdPct = wantsBattery && coveredBase ? clampPct((batteryFromCovered / coveredBase) * 100) : 0;
+    // Destino da produção: se a produção for maior que o "consumo coberto", usa-se esse consumo como base do gráfico.
+    const productionChartBase =
+      Number.isFinite(consumoSolarEstimate) && consumoSolarEstimate > 0 && producaoperca > consumoSolarEstimate
+        ? consumoSolarEstimate
+        : producaoperca;
+    const homeFromCoveredChart = Math.min(homeFromCovered, productionChartBase);
+    const batteryFromCoveredChart = wantsBattery
+      ? Math.min(batteryFromCovered, Math.max(0, productionChartBase - homeFromCoveredChart))
+      : 0;
+    const gridFromCoveredChart = Math.max(0, productionChartBase - homeFromCoveredChart - batteryFromCoveredChart);
+
+    // Garantir que a soma é sempre 100%.
+    const coveredBase = homeFromCoveredChart + batteryFromCoveredChart + gridFromCoveredChart;
+    const homeCoveredPct = coveredBase ? clampPct((homeFromCoveredChart / coveredBase) * 100) : 0;
+    const batteryProdPct = wantsBattery && coveredBase ? clampPct((batteryFromCoveredChart / coveredBase) * 100) : 0;
     const gridCoveredPct = clampPct(100 - homeCoveredPct - batteryProdPct);
 
     const homeCoveredWidth = roundPct1(homeCoveredPct);
@@ -523,14 +534,14 @@
       chartNetworkPct.textContent = `${networkLabel}%`;
     }
     if (chartHomeCaption) {
-      chartHomeCaption.textContent = `${homeFromCovered.toFixed(0)} kWh para a habitação`;
+      chartHomeCaption.textContent = `${homeFromCoveredChart.toFixed(0)} kWh para a habitação`;
     }
     if (chartBatteryCaption) {
-      chartBatteryCaption.textContent = `${batteryFromCovered.toFixed(0)} kWh para a bateria`;
+      chartBatteryCaption.textContent = `${batteryFromCoveredChart.toFixed(0)} kWh para a bateria`;
       chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartGridCaption) {
-      chartGridCaption.textContent = `${gridFromCovered.toFixed(0)} kWh para a rede`;
+      chartGridCaption.textContent = `${gridFromCoveredChart.toFixed(0)} kWh para a rede`;
     }
     if (chartSystemCaption) {
       chartSystemCaption.textContent = `${homeFromTotal.toFixed(0)} kWh do sistema`;
