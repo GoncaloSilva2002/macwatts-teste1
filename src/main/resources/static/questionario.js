@@ -456,7 +456,8 @@
 	      ? Math.min(excedente, batteryChargeMaxMonthly, batteryChargeNeededMonthly)
 	      : 0;
 	    const batteryDischargedMonthly = wantsBattery ? batteryChargedMonthly * batteryUseEfficiency : 0;
-	    const batteryFromCovered = batteryChargedMonthly;
+	    // Para manter o mesmo valor entre "produção" e "origem do consumo", usamos energia útil (após perdas).
+	    const batteryFromCovered = batteryDischargedMonthly;
 	    const batteryFromTotal = batteryDischargedMonthly;
 
     // --- REDE ---
@@ -464,16 +465,17 @@
     const gridFromTotal = Math.max(0, consumoTotal - (homeFromTotal + batteryFromTotal));
 
     // --- EXPORTAÇÃO ---
-    const gridFromCovered = Math.max(0, excedente - batteryFromCovered);
+	    // Para exportação, subtraímos a energia efetivamente carregada (antes das perdas).
+	    const gridFromCovered = Math.max(0, excedente - batteryChargedMonthly);
 
     // --- BASES / PERCENTAGENS ---
     const clampPct = (value) => (Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 0);
     const roundPct1 = (value) => Math.round(clampPct(value) * 10) / 10;
     const roundPct0 = (value) => Math.round(clampPct(value));
 
-    // Destino da produção: percentagens sobre a produção mensal (producaoperca).
-    // Nota: `homeFromCovered + batteryFromCovered + gridFromCovered` == `producaoperca` (com os clamps acima).
-    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
+	    // Destino da produção (útil): percentagens sobre a produção mensal útil após perdas de armazenamento.
+	    // Nota: `homeFromCovered + batteryFromCovered + gridFromCovered` == `producaoperca - perdas` (com os clamps acima).
+	    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
     const homeCoveredPct = coveredBase ? clampPct((homeFromCovered / coveredBase) * 100) : 0;
     const batteryProdPct = wantsBattery && coveredBase ? clampPct((batteryFromCovered / coveredBase) * 100) : 0;
     const gridCoveredPct = clampPct(100 - homeCoveredPct - batteryProdPct);
