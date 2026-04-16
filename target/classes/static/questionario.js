@@ -425,9 +425,9 @@
 
 
 
-    const batteryEfficiency = 0.9;
-    const inverterEfficiency = 0.95;
-    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
+	    const batteryEfficiency = 0.9;
+	    const inverterEfficiency = 0.95;
+	    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
 
 
     const productionMonthly = productionPerPanel * panelsNeeded;
@@ -443,13 +443,20 @@
     const homeFromCovered = Math.min(consumoSolarEstimate, producaoperca); // produção usada diretamente
     const excedente = Math.max(0, producaoperca - homeFromCovered);
 
-    // Bateria: para manter consistência entre gráficos ("para a bateria" == "da bateria"),
-    // modelamos a energia mensal da bateria como a energia efetivamente utilizada no consumo.
-    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
-    const batteryChargeMaxMonthly = wantsBattery ? batteryCapacityKwh * 30 : 0;
-    const batteryEnergyMonthly = wantsBattery ? Math.min(excedente, batteryChargeMaxMonthly, consumoNoite) : 0;
-    const batteryFromCovered = batteryEnergyMonthly;
-    const batteryFromTotal = batteryEnergyMonthly;
+	    // Bateria: há perdas (bateria + inversor), por isso:
+	    // - "para a bateria" = energia carregada a partir do excedente
+	    // - "da bateria" = energia efetivamente entregue ao consumo (após perdas)
+	    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
+	    const batteryChargeMaxMonthly = wantsBattery ? batteryCapacityKwh * 30 : 0;
+	    const batteryChargeNeededMonthly = wantsBattery && batteryUseEfficiency > 0
+	      ? consumoNoite / batteryUseEfficiency
+	      : 0;
+	    const batteryChargedMonthly = wantsBattery
+	      ? Math.min(excedente, batteryChargeMaxMonthly, batteryChargeNeededMonthly)
+	      : 0;
+	    const batteryDischargedMonthly = wantsBattery ? batteryChargedMonthly * batteryUseEfficiency : 0;
+	    const batteryFromCovered = batteryChargedMonthly;
+	    const batteryFromTotal = batteryDischargedMonthly;
 
     // --- REDE ---
     const homeFromTotal = homeFromCovered;
