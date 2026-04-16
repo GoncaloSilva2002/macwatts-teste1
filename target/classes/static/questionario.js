@@ -428,6 +428,7 @@
 	    const batteryEfficiency = 0.9;
 	    const inverterEfficiency = 0.95;
 	    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
+	    const batteryMaxChargeFraction = 0.9; // não consideramos carga a 100% (SOC máx ~90%)
 
 
     const productionMonthly = productionPerPanel * panelsNeeded;
@@ -447,7 +448,7 @@
 	    // - "para a bateria" = energia carregada a partir do excedente
 	    // - "da bateria" = energia efetivamente entregue ao consumo (após perdas)
 	    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
-	    const batteryChargeMaxMonthly = wantsBattery ? batteryCapacityKwh * 30 : 0;
+	    const batteryChargeMaxMonthly = wantsBattery ? (batteryCapacityKwh * batteryMaxChargeFraction) * 30 : 0;
 	    const batteryChargeNeededMonthly = wantsBattery && batteryUseEfficiency > 0
 	      ? consumoNoite / batteryUseEfficiency
 	      : 0;
