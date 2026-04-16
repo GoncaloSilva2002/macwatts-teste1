@@ -443,13 +443,13 @@
     const homeFromCovered = Math.min(consumoSolarEstimate, producaoperca); // produção usada diretamente
     const excedente = Math.max(0, producaoperca - homeFromCovered);
 
-    // Energia enviada para a bateria (do excedente), limitada pelo excedente e por uma carga diária ~ capacidade.
+    // Bateria: para manter consistência entre gráficos ("para a bateria" == "da bateria"),
+    // modelamos a energia mensal da bateria como a energia efetivamente utilizada no consumo.
     const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
     const batteryChargeMaxMonthly = wantsBattery ? batteryCapacityKwh * 30 : 0;
-    const batteryFromCovered = wantsBattery ? Math.min(excedente, batteryChargeMaxMonthly) : 0;
-
-    // Consumo coberto pela bateria (descarga), limitado pela energia carregada (com perdas) e pelo consumo noturno.
-    const batteryFromTotal = wantsBattery ? Math.min(consumoNoite, batteryFromCovered * batteryUseEfficiency) : 0;
+    const batteryEnergyMonthly = wantsBattery ? Math.min(excedente, batteryChargeMaxMonthly, consumoNoite) : 0;
+    const batteryFromCovered = batteryEnergyMonthly;
+    const batteryFromTotal = batteryEnergyMonthly;
 
     // --- REDE ---
     const homeFromTotal = homeFromCovered;
