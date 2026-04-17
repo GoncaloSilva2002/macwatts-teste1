@@ -425,10 +425,7 @@
 
 
 
-	    const batteryEfficiency = 0.9;
-	    const inverterEfficiency = 0.95;
-	    const batteryUseEfficiency = batteryEfficiency * inverterEfficiency;
-	    const batteryMaxChargeFraction = 0.9; // não consideramos carga a 100% (SOC máx ~90%)
+	    const batteryMaxChargeFraction = 0.85; // não consideramos carga a 100% (SOC máx ~90%)
 
 
     const productionMonthly = productionPerPanel * panelsNeeded;
@@ -444,19 +441,17 @@
     const homeFromCovered = Math.min(consumoSolarEstimate, producaoperca); // produção usada diretamente
     const excedente = Math.max(0, producaoperca - homeFromCovered);
 
-	    // Bateria: há perdas (bateria + inversor), por isso:
+	    // Bateria: sem perdas/eficiências (pedido), apenas limite de carga (SOC máx ~90%).
 	    // - "para a bateria" = energia carregada a partir do excedente
-	    // - "da bateria" = energia efetivamente entregue ao consumo (após perdas)
+	    // - "da bateria" = energia entregue ao consumo (igual à carregada)
 	    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
 	    const batteryChargeMaxMonthly = wantsBattery ? (batteryCapacityKwh * batteryMaxChargeFraction) * 30 : 0;
-	    const batteryChargeNeededMonthly = wantsBattery && batteryUseEfficiency > 0
-	      ? consumoNoite / batteryUseEfficiency
-	      : 0;
+	    const batteryChargeNeededMonthly = wantsBattery ? consumoNoite : 0;
 	    const batteryChargedMonthly = wantsBattery
 	      ? Math.min(excedente, batteryChargeMaxMonthly, batteryChargeNeededMonthly)
 	      : 0;
-	    const batteryDischargedMonthly = wantsBattery ? batteryChargedMonthly * batteryUseEfficiency : 0;
-	    // Para manter o mesmo valor entre "produção" e "origem do consumo", usamos energia útil (após perdas).
+	    const batteryDischargedMonthly = wantsBattery ? batteryChargedMonthly : 0;
+	    // Mantemos o mesmo valor entre "produção" e "origem do consumo".
 	    const batteryFromCovered = batteryDischargedMonthly;
 	    const batteryFromTotal = batteryDischargedMonthly;
 
@@ -465,7 +460,7 @@
     const gridFromTotal = Math.max(0, consumoTotal - (homeFromTotal + batteryFromTotal));
 
     // --- EXPORTAÇÃO ---
-	    // Para exportação, subtraímos a energia efetivamente carregada (antes das perdas).
+	    // Para exportação, subtraímos a energia carregada.
 	    const gridFromCovered = Math.max(0, excedente - batteryChargedMonthly);
 
     // --- BASES / PERCENTAGENS ---
@@ -473,9 +468,9 @@
     const roundPct1 = (value) => Math.round(clampPct(value) * 10) / 10;
     const roundPct0 = (value) => Math.round(clampPct(value));
 
-	    // Destino da produção (útil): percentagens sobre a produção mensal útil após perdas de armazenamento.
-	    // Nota: `homeFromCovered + batteryFromCovered + gridFromCovered` == `producaoperca - perdas` (com os clamps acima).
-	    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
+		    // Destino da produção: percentagens sobre a produção mensal estimada.
+		    // Nota: `homeFromCovered + batteryFromCovered + gridFromCovered` == `producaoperca` (com os clamps acima).
+		    const coveredBase = homeFromCovered + batteryFromCovered + gridFromCovered;
     const homeCoveredPct = coveredBase ? clampPct((homeFromCovered / coveredBase) * 100) : 0;
     const batteryProdPct = wantsBattery && coveredBase ? clampPct((batteryFromCovered / coveredBase) * 100) : 0;
     const gridCoveredPct = clampPct(100 - homeCoveredPct - batteryProdPct);
