@@ -507,7 +507,6 @@
     const batteryProdLabel = wantsBattery ? roundPct0(adjustedBatteryProdPct) : 0;
     const gridCoveredLabel = Math.max(0, 100 - homeCoveredLabel - batteryProdLabel);
 
-    const homeFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedHomeCoveredPct / 100)) : 0;
     const batteryFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedBatteryProdPct / 100)) : 0;
     const gridFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedGridCoveredPct / 100)) : 0;
 
@@ -557,10 +556,10 @@
       chartNetworkPct.textContent = `${networkLabel}%`;
     }
     if (chartHomeCaption) {
-      chartHomeCaption.textContent = `${homeFromCoveredDisplay.toFixed(0)} kWh para a habitação`;
+      chartHomeCaption.textContent = `${homeFromTotal.toFixed(0)} kWh para a habitação`;
     }
     if (chartBatteryCaption) {
-      chartBatteryCaption.textContent = `${batteryFromCoveredDisplay.toFixed(0)} kWh para a bateria`;
+      chartBatteryCaption.textContent = `${batteryFromTotal.toFixed(0)} kWh para a bateria`;
       chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartGridCaption) {
