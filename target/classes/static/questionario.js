@@ -480,13 +480,36 @@
     const batteryProdPct = wantsBattery && coveredBase ? clampPct((batteryFromCovered / coveredBase) * 100) : 0;
     const gridCoveredPct = clampPct(100 - homeCoveredPct - batteryProdPct);
 
-    const homeCoveredWidth = roundPct1(homeCoveredPct);
-    const batteryProdWidth = roundPct1(batteryProdPct);
+    // Ajuste solicitado: nos gráficos, garantir sempre exportação para a rede.
+    // - Mínimo 5% e, se já existir exportação, somar +5 p.p. ao valor atual.
+    // - Reescalamos habitação + bateria para manter sempre 100%.
+    const GRID_EXPORT_BONUS_PCT_POINTS = 5;
+    const nonGridCoveredSumPct = homeCoveredPct + batteryProdPct;
+    let adjustedGridCoveredPct = clampPct(gridCoveredPct + GRID_EXPORT_BONUS_PCT_POINTS);
+    let adjustedHomeCoveredPct = homeCoveredPct;
+    let adjustedBatteryProdPct = batteryProdPct;
+    if (nonGridCoveredSumPct > 0) {
+      const remainingPct = clampPct(100 - adjustedGridCoveredPct);
+      const scale = remainingPct / nonGridCoveredSumPct;
+      adjustedHomeCoveredPct = clampPct(homeCoveredPct * scale);
+      adjustedBatteryProdPct = clampPct(batteryProdPct * scale);
+    } else {
+      adjustedGridCoveredPct = 100;
+      adjustedHomeCoveredPct = 0;
+      adjustedBatteryProdPct = 0;
+    }
+
+    const homeCoveredWidth = roundPct1(adjustedHomeCoveredPct);
+    const batteryProdWidth = roundPct1(adjustedBatteryProdPct);
     const gridCoveredWidth = roundPct1(Math.max(0, 100 - homeCoveredWidth - batteryProdWidth));
 
-    const homeCoveredLabel = roundPct0(homeCoveredPct);
-    const batteryProdLabel = wantsBattery ? roundPct0(batteryProdPct) : 0;
+    const homeCoveredLabel = roundPct0(adjustedHomeCoveredPct);
+    const batteryProdLabel = wantsBattery ? roundPct0(adjustedBatteryProdPct) : 0;
     const gridCoveredLabel = Math.max(0, 100 - homeCoveredLabel - batteryProdLabel);
+
+    const homeFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedHomeCoveredPct / 100)) : 0;
+    const batteryFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedBatteryProdPct / 100)) : 0;
+    const gridFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedGridCoveredPct / 100)) : 0;
 
     // Origem do consumo: garantir que a soma é sempre 100%.
     const totalBase = homeFromTotal + batteryFromTotal + gridFromTotal;
@@ -534,14 +557,14 @@
       chartNetworkPct.textContent = `${networkLabel}%`;
     }
     if (chartHomeCaption) {
-      chartHomeCaption.textContent = `${homeFromCovered.toFixed(0)} kWh para a habitação`;
+      chartHomeCaption.textContent = `${homeFromCoveredDisplay.toFixed(0)} kWh para a habitação`;
     }
     if (chartBatteryCaption) {
-      chartBatteryCaption.textContent = `${batteryFromCovered.toFixed(0)} kWh para a bateria`;
+      chartBatteryCaption.textContent = `${batteryFromCoveredDisplay.toFixed(0)} kWh para a bateria`;
       chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartGridCaption) {
-      chartGridCaption.textContent = `${gridFromCovered.toFixed(0)} kWh para a rede`;
+      chartGridCaption.textContent = `${gridFromCoveredDisplay.toFixed(0)} kWh para a rede`;
     }
     if (chartSystemCaption) {
       chartSystemCaption.textContent = `${homeFromTotal.toFixed(0)} kWh do sistema`;
