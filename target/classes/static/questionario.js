@@ -502,11 +502,31 @@
     const batteryProdWidth = roundPct1(adjustedBatteryProdPct);
     const gridCoveredWidth = roundPct1(Math.max(0, 100 - homeCoveredWidth - batteryProdWidth));
 
-    const homeCoveredLabel = roundPct0(adjustedHomeCoveredPct);
-    const batteryProdLabel = wantsBattery ? roundPct0(adjustedBatteryProdPct) : 0;
-    const gridCoveredLabel = Math.max(0, 100 - homeCoveredLabel - batteryProdLabel);
+	    const homeCoveredLabel = roundPct0(adjustedHomeCoveredPct);
+	    const batteryProdLabel = wantsBattery ? roundPct0(adjustedBatteryProdPct) : 0;
+	    const gridCoveredLabel = Math.max(0, 100 - homeCoveredLabel - batteryProdLabel);
 
-    const gridFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedGridCoveredPct / 100)) : 0;
+	    const homeFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedHomeCoveredPct / 100)) : 0;
+	    const batteryFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedBatteryProdPct / 100)) : 0;
+	    const gridFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedGridCoveredPct / 100)) : 0;
+
+	    // kWh mostrados: garantir que a soma nunca ultrapassa a produção estimada (com 85% já aplicado),
+	    // evitando efeitos de arredondamento ao mostrar inteiros.
+	    const coveredBaseKwhMax = Math.max(0, Math.floor(coveredBase + 1e-9));
+	    const gridToNetworkKwhDisplay = Math.min(
+	      coveredBaseKwhMax,
+	      Math.round(coveredBaseKwhMax * (adjustedGridCoveredPct / 100))
+	    );
+	    const batteryToStorageKwhDisplay = wantsBattery
+	      ? Math.min(
+	          coveredBaseKwhMax - gridToNetworkKwhDisplay,
+	          Math.round(coveredBaseKwhMax * (adjustedBatteryProdPct / 100))
+	        )
+	      : 0;
+	    const homeToHouseKwhDisplay = Math.max(
+	      0,
+	      coveredBaseKwhMax - gridToNetworkKwhDisplay - batteryToStorageKwhDisplay
+	    );
 
     // Origem do consumo: garantir que a soma é sempre 100%.
     const totalBase = homeFromTotal + batteryFromTotal + gridFromTotal;
@@ -554,20 +574,20 @@
       chartNetworkPct.textContent = `${networkLabel}%`;
     }
     if (chartHomeCaption) {
-      chartHomeCaption.textContent = `${homeFromTotal.toFixed(0)} kWh para a habitação`;
+      chartHomeCaption.textContent = `${homeToHouseKwhDisplay} kWh para a habitação`;
     }
     if (chartBatteryCaption) {
-      chartBatteryCaption.textContent = `${batteryFromTotal.toFixed(0)} kWh para a bateria`;
+      chartBatteryCaption.textContent = `${batteryToStorageKwhDisplay} kWh para a bateria`;
       chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartGridCaption) {
-      chartGridCaption.textContent = `${gridFromCoveredDisplay.toFixed(0)} kWh para a rede`;
+      chartGridCaption.textContent = `${gridToNetworkKwhDisplay} kWh para a rede`;
     }
     if (chartSystemCaption) {
-      chartSystemCaption.textContent = `${homeFromTotal.toFixed(0)} kWh do sistema`;
+      chartSystemCaption.textContent = `${homeToHouseKwhDisplay} kWh do sistema`;
     }
     if (chartBatteryUseCaption) {
-      chartBatteryUseCaption.textContent = `${batteryFromTotal.toFixed(0)} kWh da bateria`;
+      chartBatteryUseCaption.textContent = `${batteryToStorageKwhDisplay} kWh da bateria`;
       chartBatteryUseCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartNetworkCaption) {
