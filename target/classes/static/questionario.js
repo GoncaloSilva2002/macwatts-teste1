@@ -481,23 +481,27 @@
     const gridCoveredPct = clampPct(100 - homeCoveredPct - batteryProdPct);
 
     // Ajuste solicitado: nos gráficos, garantir sempre exportação para a rede.
-    // - Mínimo 5% e, se já existir exportação, somar +5 p.p. ao valor atual.
-    // - Reescalamos habitação + bateria para manter sempre 100%.
+    // - Somamos +5 p.p. ao valor atual (mínimo 5%).
+    // - Não retiramos estes 5% da habitação (retiramos primeiro da bateria, se existir).
     const GRID_EXPORT_BONUS_PCT_POINTS = 5;
-    const nonGridCoveredSumPct = homeCoveredPct + batteryProdPct;
-    let adjustedGridCoveredPct = clampPct(gridCoveredPct + GRID_EXPORT_BONUS_PCT_POINTS);
+    const targetGridCoveredPct = clampPct(gridCoveredPct + GRID_EXPORT_BONUS_PCT_POINTS);
     let adjustedHomeCoveredPct = homeCoveredPct;
     let adjustedBatteryProdPct = batteryProdPct;
-    if (nonGridCoveredSumPct > 0) {
-      const remainingPct = clampPct(100 - adjustedGridCoveredPct);
-      const scale = remainingPct / nonGridCoveredSumPct;
-      adjustedHomeCoveredPct = clampPct(homeCoveredPct * scale);
-      adjustedBatteryProdPct = clampPct(batteryProdPct * scale);
-    } else {
-      adjustedGridCoveredPct = 100;
-      adjustedHomeCoveredPct = 0;
-      adjustedBatteryProdPct = 0;
+    let remainingShiftPct = Math.max(0, targetGridCoveredPct - gridCoveredPct);
+
+    if (remainingShiftPct > 0) {
+      if (wantsBattery) {
+        const fromBatteryPct = Math.min(adjustedBatteryProdPct, remainingShiftPct);
+        adjustedBatteryProdPct = clampPct(adjustedBatteryProdPct - fromBatteryPct);
+        remainingShiftPct -= fromBatteryPct;
+      }
+      if (remainingShiftPct > 0) {
+        adjustedHomeCoveredPct = clampPct(adjustedHomeCoveredPct - remainingShiftPct);
+        remainingShiftPct = 0;
+      }
     }
+
+    const adjustedGridCoveredPct = clampPct(100 - adjustedHomeCoveredPct - adjustedBatteryProdPct);
 
     const homeCoveredWidth = roundPct1(adjustedHomeCoveredPct);
     const batteryProdWidth = roundPct1(adjustedBatteryProdPct);
@@ -507,7 +511,6 @@
     const batteryProdLabel = wantsBattery ? roundPct0(adjustedBatteryProdPct) : 0;
     const gridCoveredLabel = Math.max(0, 100 - homeCoveredLabel - batteryProdLabel);
 
-    const batteryFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedBatteryProdPct / 100)) : 0;
     const gridFromCoveredDisplay = coveredBase ? (coveredBase * (adjustedGridCoveredPct / 100)) : 0;
 
     // Origem do consumo: garantir que a soma é sempre 100%.
