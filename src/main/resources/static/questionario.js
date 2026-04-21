@@ -1,6 +1,3 @@
-  if (window.pdfjsLib) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.2.67/build/pdf.worker.min.js";
-  }
   function loadStoredJson(key) {
     const raw = sessionStorage.getItem(key) || localStorage.getItem(key);
     if (!raw) return null;
@@ -407,9 +404,10 @@
       panelsNeeded += 1;
     }
 
-    const monthlyKwhTotalRounded1 = Math.round(monthlyKwhTotal * 10) / 10;
-    monthlyKwhTotalText.textContent = `${monthlyKwhTotalRounded1.toFixed(1)} kWh`;
-    monthlyKwhCoveredText.textContent = `${monthlyKwhCovered.toFixed(1)} kWh`;
+    const monthlyKwhTotalRounded0 = Math.round(monthlyKwhTotal);
+    const monthlyKwhCoveredRounded0 = Math.round(monthlyKwhCovered);
+    monthlyKwhTotalText.textContent = `${monthlyKwhTotalRounded0} kWh`;
+    monthlyKwhCoveredText.textContent = `${monthlyKwhCoveredRounded0} kWh`;
     const monthlyKwpRaw = panelsNeeded * panelPower;
     const monthlyKwpAdjusted = monthlyKwpRaw / 1.2;
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
@@ -510,24 +508,23 @@
     const batteryUseLabel = wantsBattery ? roundPct0(batteryUsePct) : 0;
     const networkLabel = Math.max(0, 100 - systemLabel - batteryUseLabel);
 
-    // kWh mostrados (1 decimal): garantir que as somas batem certo com os totais (produção e consumo).
-    // Trabalhamos em "décimas de kWh" para evitar erros de arredondamento.
-    const toTenths = (value) => Math.max(0, Math.round((Number.isFinite(value) ? value : 0) * 10));
-    const formatTenths = (tenths) => (Math.max(0, tenths) / 10).toFixed(1);
+    // kWh mostrados (inteiros): garantir que as somas batem certo com os totais (produção e consumo),
+    // evitando erros de arredondamento.
+    const toUnits = (value) => Math.max(0, Math.round(Number.isFinite(value) ? value : 0));
 
-    const productionTenthsBase = toTenths(producaoperca);
-    const homeProdTenths = Math.min(toTenths(homeFromTotal), productionTenthsBase);
-    const batteryProdTenths = wantsBattery
-      ? Math.min(toTenths(batteryFromTotal), Math.max(0, productionTenthsBase - homeProdTenths))
-      : 0;
-    const gridExportTenths = Math.max(0, productionTenthsBase - homeProdTenths - batteryProdTenths);
+    const productionKwhBase = toUnits(producaoperca);
+    const consumptionKwhBase = toUnits(consumoTotal);
 
-    const consumptionTenthsBase = toTenths(consumoTotal);
-    const systemConsTenths = Math.min(toTenths(homeFromTotal), consumptionTenthsBase);
-    const batteryConsTenths = wantsBattery
-      ? Math.min(toTenths(batteryFromTotal), Math.max(0, consumptionTenthsBase - systemConsTenths))
+    const systemKwhDisplay = Math.min(toUnits(homeFromTotal), productionKwhBase, consumptionKwhBase);
+    const batteryKwhDisplay = wantsBattery
+      ? Math.min(
+          toUnits(batteryFromTotal),
+          Math.max(0, productionKwhBase - systemKwhDisplay),
+          Math.max(0, consumptionKwhBase - systemKwhDisplay)
+        )
       : 0;
-    const gridImportTenths = Math.max(0, consumptionTenthsBase - systemConsTenths - batteryConsTenths);
+    const gridExportKwhDisplay = Math.max(0, productionKwhBase - systemKwhDisplay - batteryKwhDisplay);
+    const gridImportKwhDisplay = Math.max(0, consumptionKwhBase - systemKwhDisplay - batteryKwhDisplay);
 
     if (chartBatteryProdRow) {
       chartBatteryProdRow.style.display = wantsBattery ? "grid" : "none";
@@ -561,24 +558,24 @@
       chartNetworkPct.textContent = `${networkLabel}%`;
     }
     if (chartHomeCaption) {
-      chartHomeCaption.textContent = `${formatTenths(homeProdTenths)} kWh para a habitação`;
+      chartHomeCaption.textContent = `${systemKwhDisplay} kWh para a habitação`;
     }
     if (chartBatteryCaption) {
-      chartBatteryCaption.textContent = `${formatTenths(batteryProdTenths)} kWh para a bateria`;
+      chartBatteryCaption.textContent = `${batteryKwhDisplay} kWh para a bateria`;
       chartBatteryCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartGridCaption) {
-      chartGridCaption.textContent = `${formatTenths(gridExportTenths)} kWh para a rede`;
+      chartGridCaption.textContent = `${gridExportKwhDisplay} kWh para a rede`;
     }
     if (chartSystemCaption) {
-      chartSystemCaption.textContent = `${formatTenths(systemConsTenths)} kWh do sistema`;
+      chartSystemCaption.textContent = `${systemKwhDisplay} kWh do sistema`;
     }
     if (chartBatteryUseCaption) {
-      chartBatteryUseCaption.textContent = `${formatTenths(batteryConsTenths)} kWh da bateria`;
+      chartBatteryUseCaption.textContent = `${batteryKwhDisplay} kWh da bateria`;
       chartBatteryUseCaption.style.display = wantsBattery ? "block" : "none";
     }
     if (chartNetworkCaption) {
-      chartNetworkCaption.textContent = `${formatTenths(gridImportTenths)} kWh da rede`;
+      chartNetworkCaption.textContent = `${gridImportKwhDisplay} kWh da rede`;
     }
 
     if (powerTermWarning) {
@@ -963,185 +960,14 @@
     setAdditionalStep(1);
   });
 
-  function clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
-  function parseEuroValue(text) {
-    const cleaned = text.replace(/\s/g, "");
-    const match = cleaned.match(/(\d+[.,]\d{2})\s*€?/);
-    if (!match) return null;
-    return Number(match[1].replace(",", "."));
-  }
-
-  function extractValuesFromOcr(rawText) {
-    const text = rawText.replace(/\s+/g, " ").trim();
-    const lines = rawText.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
-
-    const unitPriceCandidates = [];
-    const baseUnitPriceCandidates = [];
-    const basePriceCandidates = [];
-    const discountedPriceCandidates = [];
-    const totalCandidates = [];
-    const totalCandidatesNoDiscount = [];
-    let summedEnergyTotal = 0;
-    let summedEnergyKwh = 0;
-    let unitPriceFromLines = null;
-
-    const unitRegex = /(\d+[.,]\d+)\s*(€\s*\/\s*kwh|eur\s*\/\s*kwh|€\s*kwh)/i;
-    const kwhQtyRegex = /(\d+[.,]\d+)\s*kwh/i;
-    const euroRegex = /(\d+[.,]\d{2})\s*€/i;
-    const priceInTableRegex = /(\d+[.,]\d+)\s*€\s*(?=\s*\d+[.,]\d{2}\s*€)/i;
-    const basePriceLineRegex = /preço\s*base/i;
-    const totalValorBaseRegex = /total\s+valor\s+base/i;
-    const energyHeaderRegex = /(consumo\s+real|termo\s+de\s+energia|tarifa\s+social)/i;
-    const energyBlockEndRegex = /(potência\s+contratada|taxas\s+e\s+impostos|total\s+luz|total\s+da\s+fatura)/i;
-    const powerTermRegex = /(termo\s+de\s+pot[eê]ncia|pot[eê]ncia)/i;
-    const powerKvaRegex = /(\d+[.,]\d+)\s*k\s*va/i;
-    let inEnergyBlock = false;
-
-    function normalizeLine(rawLine) {
-      return rawLine
-        .replace(/O(?=\\d)/g, "0")
-        .replace(/l(?=\\d)/g, "1")
-        .replace(/I(?=\\d)/g, "1");
-    }
-
-    let powerTermValue = null;
-    for (const rawLine of lines) {
-      const line = normalizeLine(rawLine);
-      const lower = line.toLowerCase();
-      if (energyHeaderRegex.test(lower)) {
-        inEnergyBlock = true;
-      } else if (energyBlockEndRegex.test(lower)) {
-        inEnergyBlock = false;
-      }
-      const unitMatch = line.match(unitRegex);
-      if (unitMatch) {
-        unitPriceCandidates.push(Number(unitMatch[1].replace(",", ".")));
-      }
-
-      if (line.toLowerCase().includes("kwh")) {
-        const lowerInline = line.toLowerCase();
-        const hasDiscountInline = ["desconto", "desc."].some((k) => lowerInline.includes(k));
-        const unitAll = Array.from(line.matchAll(/(\d+[.,]\d+)\s*€\s*\/\s*kwh/ig)).map((m) => Number(m[1].replace(",", ".")));
-        if (!hasDiscountInline && unitAll.length) {
-          baseUnitPriceCandidates.push(unitAll[0]);
-        }
-      }
-
-      const euroMatches = Array.from(line.matchAll(/(\d+[.,]\d{2})\s*€/ig)).map((m) => Number(m[1].replace(",", ".")));
-      const euroValue = euroMatches.length ? euroMatches[euroMatches.length - 1] : null;
-      const kwhMatch = line.match(kwhQtyRegex);
-      const kwhValue = kwhMatch ? Number(kwhMatch[1].replace(",", ".")) : null;
-      const priceInTableMatch = line.match(priceInTableRegex);
-      const priceInTable = priceInTableMatch ? Number(priceInTableMatch[1].replace(",", ".")) : null;
-      const powerKvaMatch = line.match(powerKvaRegex);
-      if (!powerTermValue && powerKvaMatch && (powerTermRegex.test(lower) || lower.includes("kva"))) {
-        powerTermValue = Number(powerKvaMatch[1].replace(",", "."));
-      }
-
-      if (euroValue !== null) {
-        const isEnergyLine = ["termo de energia", "energia (real)", "energia real", "energia", "consumo real"].some((k) => lower.includes(k)) || inEnergyBlock;
-        const hasTax = ["iva", "imposto", "taxa", "contrib"].some((k) => lower.includes(k));
-        const isTotal = ["total", "subtotal"].some((k) => lower.includes(k));
-        const hasDiscount = ["desconto", "desc."].some((k) => lower.includes(k));
-        const hasBase = ["base", "preço base", "preco base"].some((k) => lower.includes(k));
-        const isPowerLine = ["kva", "potencia", "potência", "dias"].some((k) => lower.includes(k));
-
-        if (isEnergyLine && !hasDiscount) {
-          if (unitMatch) {
-            unitPriceCandidates.push(Number(unitMatch[1].replace(",", ".")));
-          } else if (priceInTable) {
-            unitPriceCandidates.push(priceInTable);
-          }
-        }
-
-        if (totalValorBaseRegex.test(lower) && isEnergyLine && !hasDiscount) {
-          totalCandidatesNoDiscount.push(euroValue);
-          totalCandidates.push(euroValue);
-        }
-
-        if (isEnergyLine && !hasTax && !isTotal && !hasDiscount) {
-          basePriceCandidates.push(euroValue);
-        }
-        if (hasDiscount) {
-          discountedPriceCandidates.push(euroValue);
-        }
-        if (isEnergyLine && !hasTax && isTotal && !hasDiscount) {
-          totalCandidatesNoDiscount.push(euroValue);
-          totalCandidates.push(euroValue);
-        }
-
-        if (((isEnergyLine && !hasTax) || inEnergyBlock) && !isPowerLine && kwhValue && !hasDiscount) {
-          summedEnergyKwh += kwhValue;
-
-          const lineTotals = euroMatches.filter((value) => value >= 1);
-          if (lineTotals.length) {
-            summedEnergyTotal += Math.max(...lineTotals);
-          } else if (euroValue) {
-            summedEnergyTotal += euroValue;
-          }
-
-          const lineUnitCandidates = euroMatches.filter((value) => value > 0 && value < 1);
-          if (!unitPriceFromLines && lineUnitCandidates.length) {
-            unitPriceFromLines = Math.min(...lineUnitCandidates);
-          }
-
-          if (!unitPriceFromLines && priceInTable) {
-            unitPriceFromLines = priceInTable;
-          }
-        }
-
-        if (kwhValue && unitMatch) {
-          const computed = kwhValue * Number(unitMatch[1].replace(",", "."));
-          totalCandidates.push(computed);
-        }
-      }
-    }
-
-    let pricePerKwh = baseUnitPriceCandidates.length ? Math.max(...baseUnitPriceCandidates) : null;
-    if (!pricePerKwh && unitPriceCandidates.length) {
-      pricePerKwh = Math.max(...unitPriceCandidates);
-    }
-    if (!pricePerKwh && unitPriceFromLines) {
-      pricePerKwh = unitPriceFromLines;
-    }
-    let priceLight = null;
-    if (totalCandidatesNoDiscount.length) {
-      priceLight = Math.max(...totalCandidatesNoDiscount);
-    } else if (totalCandidates.length) {
-      priceLight = Math.max(...totalCandidates);
-    } else if (summedEnergyTotal > 0) {
-      priceLight = summedEnergyTotal;
-    } else if (basePriceCandidates.length) {
-      priceLight = Math.max(...basePriceCandidates);
-    }
-
-    if (!pricePerKwh && summedEnergyTotal > 0 && summedEnergyKwh > 0) {
-      pricePerKwh = summedEnergyTotal / summedEnergyKwh;
-    }
-
-    if (!pricePerKwh) {
-      const fallback = text.match(unitRegex);
-      pricePerKwh = fallback ? Number(fallback[1].replace(",", ".")) : null;
-    }
-
-    if (!powerTermValue) {
-      const powerTextMatch = text.match(powerKvaRegex);
-      if (powerTextMatch) {
-        powerTermValue = Number(powerTextMatch[1].replace(",", "."));
-      }
-    }
-
-    return { pricePerKwh, priceLight, powerTermValue };
-  }
-
   async function handleInvoiceFile(file) {
     if (!file) return;
-    invoiceStatus.textContent = "A ler fatura…";
+    invoiceStatus.textContent = "A anexar fatura…";
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      invoiceStatus.textContent = "Falha ao anexar a fatura.";
+    };
     reader.onload = async () => {
       const dataUrl = String(reader.result || "");
       invoiceFile = {
@@ -1156,62 +982,21 @@
       } catch (error) {
         console.warn("Falha ao guardar fatura em IndexedDB:", error);
       }
-    if (file.type === "application/pdf") {
-      invoicePdf = invoiceFile;
-      invoicePhoto = null;
-      persistJson("invoicePdf", invoicePdf);
-      sessionStorage.removeItem("invoicePhoto");
-      localStorage.removeItem("invoicePhoto");
-    } else {
-      invoicePhoto = invoiceFile;
-      invoicePdf = null;
-      persistJson("invoicePhoto", invoicePhoto);
-      sessionStorage.removeItem("invoicePdf");
-      localStorage.removeItem("invoicePdf");
-    }
-
-      try {
-        let rawText = "";
-        if (file.type === "application/pdf") {
-          const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-          const pages = [];
-          for (let i = 1; i <= pdf.numPages; i += 1) {
-            const page = await pdf.getPage(i);
-            const content = await page.getTextContent();
-            pages.push(content.items.map((item) => item.str).join(" "));
-          }
-          rawText = pages.join(" ");
-        } else {
-          const result = await Tesseract.recognize(file, "por+eng");
-          rawText = result.data && result.data.text ? result.data.text : "";
-        }
-        const extracted = extractValuesFromOcr(rawText);
-        let applied = false;
-
-        if (Number.isFinite(extracted.pricePerKwh) && extracted.pricePerKwh > 0) {
-          pricePerKwhInput.value = extracted.pricePerKwh.toFixed(4);
-          applied = true;
-        }
-        if (Number.isFinite(extracted.powerTermValue) && extracted.powerTermValue > 0) {
-          powerTermInput.value = extracted.powerTermValue.toFixed(2);
-          applied = true;
-        }
-        if (Number.isFinite(extracted.priceLight) && extracted.priceLight > 0) {
-          const value = clamp(Math.round(extracted.priceLight), Number(priceLight.min), Number(priceLight.max));
-          priceLight.value = String(value);
-          applied = true;
-        }
-
-        if (applied) {
-          renderPriceSlider();
-          invoiceStatus.textContent = "Valores encontrados e aplicados. Pode ajustar manualmente se necessário.";
-        } else {
-          invoiceStatus.textContent = "Não foi possível detetar valores. Pode preencher manualmente.";
-        }
-      } catch (error) {
-        invoiceStatus.textContent = "Falha ao ler a fatura. Pode preencher manualmente.";
-        console.error("OCR erro:", error);
+      if (file.type === "application/pdf") {
+        invoicePdf = invoiceFile;
+        invoicePhoto = null;
+        persistJson("invoicePdf", invoicePdf);
+        sessionStorage.removeItem("invoicePhoto");
+        localStorage.removeItem("invoicePhoto");
+      } else {
+        invoicePhoto = invoiceFile;
+        invoicePdf = null;
+        persistJson("invoicePhoto", invoicePhoto);
+        sessionStorage.removeItem("invoicePdf");
+        localStorage.removeItem("invoicePdf");
       }
+
+      invoiceStatus.textContent = "Fatura anexada.";
     };
     reader.readAsDataURL(file);
   }
