@@ -159,6 +159,11 @@
   };
   const DEFAULT_PANEL_MONTHLY_KWH = 66.25;
 
+  // Dimensões do painel e espaçamento (metros).
+  const PANEL_WIDTH_M = 2.1;
+  const PANEL_HEIGHT_M = 1.3;
+  const PANEL_GAP_M = 0.05;
+
   function getLatitudeZone(lat, minLat, maxLat, zoneCount = 3, labels = null) {
     if (!Number.isFinite(lat) || !Number.isFinite(minLat) || !Number.isFinite(maxLat)) {
       return null;
@@ -193,6 +198,10 @@
   let currentZoneLabel = null;
   let lastPanelsNeeded = 0;
   let lastPanelsIdeal = 0;
+  let lastPanelsFit = 0;
+  let lastPanelsFitRequested = 0;
+  let lastPanelsMaxByArea = null;
+  let lastPanelsPlaced = null;
 
   if (!roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
     statusEl.textContent = "Não encontrámos seleção de telhado. Volta ao passo anterior.";
@@ -325,9 +334,7 @@
   function estimateMaxPanelsByRoofArea() {
     const roofAreaSqm = roofData && Number.isFinite(Number(roofData.areaSqm)) ? Number(roofData.areaSqm) : null;
     if (!roofAreaSqm || roofAreaSqm <= 0) return null;
-    const panelWidthMeters = 2.278;
-    const panelHeightMeters = 1.134;
-    const panelAreaSqm = panelWidthMeters * panelHeightMeters;
+    const panelAreaSqm = PANEL_WIDTH_M * PANEL_HEIGHT_M;
     const packingEfficiency = 0.80;
     const maxPanels = Math.floor((roofAreaSqm * packingEfficiency) / panelAreaSqm);
     return Math.max(0, maxPanels);
@@ -499,6 +506,12 @@
       fitPanels = normalizePanelsCount(Math.min(fitPanelsRequest, placedPanels));
     }
 
+    lastPanelsIdeal = idealPanels;
+    lastPanelsFitRequested = fitPanelsRequest;
+    lastPanelsFit = fitPanels;
+    lastPanelsMaxByArea = maxPanelsByArea;
+    lastPanelsPlaced = placedPanels;
+
     const monthlyKwhTotalRounded0 = Math.round(monthlyKwhTotal);
     const monthlyKwhCoveredRounded0 = Math.round(monthlyKwhCovered);
     monthlyKwhTotalText.textContent = `${monthlyKwhTotalRounded0} kWh`;
@@ -507,16 +520,11 @@
     const monthlyKwpAdjusted = monthlyKwpRaw / 1.2;
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
     panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
-    if (fitPanels > 0 && fitPanels < idealPanels) {
-      panelsNeededText.textContent = `${fitPanels} (cabem) / ${idealPanels} (ideal)`;
-    } else {
-      panelsNeededText.textContent = `${idealPanels} painéis`;
-    }
+    panelsNeededText.textContent = `${fitPanels} painéis`;
     if (batteryCapacityText) {
       const capacity = wantsBattery ? getBatteryCapacityKwh(fitPanels) : 0;
       batteryCapacityText.textContent = capacity > 0 ? `${capacity} kWh` : "Sem bateria";
     }
-    lastPanelsIdeal = idealPanels;
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
       if (fitPanels > 0 && fitPanels < idealPanels) {
@@ -934,13 +942,10 @@
       return null;
     }
     const pxPerMeter = Math.sqrt(areaPx / roofAreaSqm);
-    const panelWidthMeters = 2.278;
-    const panelHeightMeters = 1.134;
-    const gapMeters = 0.025;
     return {
-      width: Math.max(10, panelWidthMeters * pxPerMeter),
-      height: Math.max(6, panelHeightMeters * pxPerMeter),
-      gap: Math.max(2, gapMeters * pxPerMeter)
+      width: Math.max(10, PANEL_WIDTH_M * pxPerMeter),
+      height: Math.max(6, PANEL_HEIGHT_M * pxPerMeter),
+      gap: Math.max(2, PANEL_GAP_M * pxPerMeter)
     };
   }
 
@@ -1434,6 +1439,7 @@
       panelsNeeded: totalPanels,
       panelsIdeal: totalPanelsIdeal,
       panelsMaxFitByArea: maxPanelsByArea,
+      panelsPlaced: placedPanels,
       updatedAt: new Date().toISOString()
     };
     persistJson("contactQuestionnaire", payload);
