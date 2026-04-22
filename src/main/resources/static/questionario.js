@@ -302,7 +302,7 @@
     const bounds = new google.maps.LatLngBounds();
     path.forEach((point) => bounds.extend(point));
     map.fitBounds(bounds, { top: 20, right: 20, bottom: 20, left: 20 });
-    google.maps.event.addListenerOnce(map, "idle", () => updatePanelOverlay(lastPanelsNeeded));
+    google.maps.event.addListenerOnce(map, "idle", () => renderPriceSlider());
   }
 
   backBtn.addEventListener("click", () => {
@@ -493,6 +493,11 @@
     if (maxPanelsByArea !== null) {
       fitPanels = normalizePanelsCount(Math.min(idealPanels, maxPanelsByArea));
     }
+    const fitPanelsRequest = fitPanels;
+    const placedPanels = updatePanelOverlay(fitPanelsRequest);
+    if (Number.isFinite(placedPanels) && placedPanels >= 0) {
+      fitPanels = normalizePanelsCount(Math.min(fitPanelsRequest, placedPanels));
+    }
 
     const monthlyKwhTotalRounded0 = Math.round(monthlyKwhTotal);
     const monthlyKwhCoveredRounded0 = Math.round(monthlyKwhCovered);
@@ -502,17 +507,22 @@
     const monthlyKwpAdjusted = monthlyKwpRaw / 1.2;
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
     panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
-    panelsNeededText.textContent = `${idealPanels} painéis`;
+    if (fitPanels > 0 && fitPanels < idealPanels) {
+      panelsNeededText.textContent = `${fitPanels} (cabem) / ${idealPanels} (ideal)`;
+    } else {
+      panelsNeededText.textContent = `${idealPanels} painéis`;
+    }
     if (batteryCapacityText) {
       const capacity = wantsBattery ? getBatteryCapacityKwh(fitPanels) : 0;
       batteryCapacityText.textContent = capacity > 0 ? `${capacity} kWh` : "Sem bateria";
     }
     lastPanelsIdeal = idealPanels;
     lastPanelsNeeded = fitPanels;
-    updatePanelOverlay(fitPanels);
     if (roofPanelsWarning) {
-      if (maxPanelsByArea !== null && fitPanels < idealPanels) {
-        roofPanelsWarning.textContent = `No telhado só cabem ~${fitPanels} painéis (pela área). A solução ideal seriam ${idealPanels}.`;
+      if (fitPanels > 0 && fitPanels < idealPanels) {
+        roofPanelsWarning.textContent = `No telhado só cabem ~${fitPanels} painéis. A solução ideal seriam ${idealPanels}.`;
+      } else if (fitPanelsRequest === 0 && idealPanels > 0) {
+        roofPanelsWarning.textContent = "O telhado pode não ter área suficiente para painéis.";
       } else {
         roofPanelsWarning.textContent = "";
       }
@@ -734,9 +744,25 @@
       { x: center.x + halfW, y: center.y + halfH },
       { x: center.x - halfW, y: center.y + halfH }
     ];
-    return corners.every((corner) => {
-      if (!pointInPolygon(corner, polygon)) return false;
-      return minDistanceToEdges(corner, polygon) >= margin;
+    const midpoints = [
+      { x: center.x, y: center.y - halfH },
+      { x: center.x + halfW, y: center.y },
+      { x: center.x, y: center.y + halfH },
+      { x: center.x - halfW, y: center.y }
+    ];
+    const edgeSamples = [];
+    for (let i = 0; i < corners.length; i++) {
+      const a = corners[i];
+      const b = corners[(i + 1) % corners.length];
+      edgeSamples.push(
+        { x: a.x + (b.x - a.x) * 0.25, y: a.y + (b.y - a.y) * 0.25 },
+        { x: a.x + (b.x - a.x) * 0.75, y: a.y + (b.y - a.y) * 0.75 }
+      );
+    }
+    const samples = [center, ...corners, ...midpoints, ...edgeSamples];
+    return samples.every((pt) => {
+      if (!pointInPolygon(pt, polygon)) return false;
+      return minDistanceToEdges(pt, polygon) >= margin;
     });
   }
 
@@ -994,26 +1020,26 @@
   }
 
   function updatePanelOverlay(panelsNeeded) {
-    if (!map || !overlayView) return;
+    if (!map || !overlayView) return null;
     if (!roofData || !Array.isArray(roofData.points) || roofData.points.length < 3) {
       clearPanelOverlay();
-      return;
+      return 0;
     }
     if (!Number.isFinite(panelsNeeded) || panelsNeeded <= 0) {
       clearPanelOverlay();
-      return;
+      return 0;
     }
     const projection = overlayView.getProjection();
     if (!projection) {
       google.maps.event.addListenerOnce(map, "idle", () => updatePanelOverlay(panelsNeeded));
-      return;
+      return null;
     }
     const polygonPoints = roofData.points
       .map((point) => projection.fromLatLngToDivPixel(new google.maps.LatLng(point.lat, point.lng)))
       .map((point) => ({ x: point.x, y: point.y }));
     if (polygonPoints.length < 3) {
       clearPanelOverlay();
-      return;
+      return 0;
     }
     const angle = getPolygonOrientation(polygonPoints);
     const positions = buildPanelPositions(polygonPoints, panelsNeeded, angle);
@@ -1051,6 +1077,7 @@
       panelPolygons.push(panel);
       panelPolygonsLatLng.push(path);
     });
+    return positions.length;
   }
 
   openAdditionalInfo.addEventListener("click", () => {
@@ -1351,6 +1378,10 @@
     let totalPanels = totalPanelsIdeal;
     if (maxPanelsByArea !== null) {
       totalPanels = normalizePanelsCount(Math.min(totalPanelsIdeal, maxPanelsByArea));
+    }
+    const placedPanels = updatePanelOverlay(totalPanels);
+    if (Number.isFinite(placedPanels) && placedPanels >= 0) {
+      totalPanels = normalizePanelsCount(Math.min(totalPanels, placedPanels));
     }
     const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
     const batteryCapacityKwh = wantsBattery ? getBatteryCapacityKwh(totalPanels) : null;
