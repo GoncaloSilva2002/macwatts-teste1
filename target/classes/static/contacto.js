@@ -163,7 +163,13 @@
       } else {
         sumPanelProduction.textContent = "Produção média por painel: não disponível";
       }
-      sumPanels.textContent = `Painéis necessários: ${Number(questionnaireData.panelsNeeded || 0)} painéis`;
+      const fitPanels = Number(questionnaireData.panelsNeeded || 0);
+      const idealPanels = Number(questionnaireData.panelsIdeal || 0);
+      if (fitPanels > 0 && idealPanels > 0 && fitPanels < idealPanels) {
+        sumPanels.textContent = `Painéis necessários: ${fitPanels} (cabem) / ${idealPanels} (ideal)`;
+      } else {
+        sumPanels.textContent = `Painéis necessários: ${fitPanels} painéis`;
+      }
       sumAdditional.textContent = `Informações adicionais: ${additionalLabels.length ? "ver abaixo" : "nenhuma"}`;
       sumEquipments.textContent = `Equipamentos: ${additionalLabels.length ? additionalLabels.join(", ") : "nenhum"}`;
       sumUsage.textContent = `Maior consumo: ${usageTimeLabel}`;
@@ -273,7 +279,15 @@
       const roundedKwp = roundToOneDecimal(Number(questionnaireData.monthlyKwpNeeded));
       lines.push(`kWp necessário: ${roundedKwp.toFixed(1)} kWp`);
     }
-    if (questionnaireData.panelsNeeded) lines.push(`Painéis necessários: ${Number(questionnaireData.panelsNeeded)}`);
+    if (questionnaireData.panelsNeeded) {
+      const fitPanels = Number(questionnaireData.panelsNeeded);
+      const idealPanels = Number(questionnaireData.panelsIdeal);
+      if (Number.isFinite(idealPanels) && idealPanels > 0 && fitPanels > 0 && fitPanels < idealPanels) {
+        lines.push(`Painéis (cabem/ideal): ${fitPanels}/${idealPanels}`);
+      } else {
+        lines.push(`Painéis necessários: ${fitPanels}`);
+      }
+    }
 
     const usageTime = questionnaireData.additionalInfo && questionnaireData.additionalInfo.usageTime;
     if (usageTime) {

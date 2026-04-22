@@ -74,6 +74,7 @@
   const panelsNeededText = document.getElementById("panelsNeededText");
   const batteryCapacityText = document.getElementById("batteryCapacityText");
   const powerTermWarning = document.getElementById("powerTermWarning");
+  const roofPanelsWarning = document.getElementById("roofPanelsWarning");
   const chartHomeFill = document.getElementById("chartHomeFill");
   const chartHomePct = document.getElementById("chartHomePct");
   const chartGridFill = document.getElementById("chartGridFill");
@@ -191,6 +192,7 @@
 
   let currentZoneLabel = null;
   let lastPanelsNeeded = 0;
+  let lastPanelsIdeal = 0;
 
   if (!roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
     statusEl.textContent = "Não encontrámos seleção de telhado. Volta ao passo anterior.";
@@ -318,6 +320,27 @@
       hasWaterHeater.checked,
       hasAerotermia.checked
     ].filter(Boolean).length;
+  }
+
+  function estimateMaxPanelsByRoofArea() {
+    const roofAreaSqm = roofData && Number.isFinite(Number(roofData.areaSqm)) ? Number(roofData.areaSqm) : null;
+    if (!roofAreaSqm || roofAreaSqm <= 0) return null;
+    const panelWidthMeters = 2.278;
+    const panelHeightMeters = 1.134;
+    const panelAreaSqm = panelWidthMeters * panelHeightMeters;
+    const packingEfficiency = 0.80;
+    const maxPanels = Math.floor((roofAreaSqm * packingEfficiency) / panelAreaSqm);
+    return Math.max(0, maxPanels);
+  }
+
+  function normalizePanelsCount(count) {
+    let normalized = Number(count);
+    if (!Number.isFinite(normalized) || normalized < 0) normalized = 0;
+    normalized = Math.floor(normalized);
+    if (normalized > 1 && normalized % 2 !== 0) {
+      normalized -= 1;
+    }
+    return Math.max(0, normalized);
   }
 
   function selectedAdditionalLabels() {
@@ -460,26 +483,40 @@
     const monthlyKwhForPanels = wantsBattery ? monthlyKwhTotal : monthlyKwhCovered;
     const requiredKwp = (monthlyKwhForPanels / productionPerPanel) * panelPower;
     const requiredKwpRounded = roundToOneDecimal(requiredKwp);
-    let panelsNeeded = panelsFromKwp(requiredKwpRounded) + getAdditionalCount();
-    if (panelsNeeded % 2 !== 0) {
-      panelsNeeded += 1;
+    let idealPanels = panelsFromKwp(requiredKwpRounded) + getAdditionalCount();
+    if (idealPanels % 2 !== 0) {
+      idealPanels += 1;
+    }
+    idealPanels = normalizePanelsCount(idealPanels);
+    const maxPanelsByArea = estimateMaxPanelsByRoofArea();
+    let fitPanels = idealPanels;
+    if (maxPanelsByArea !== null) {
+      fitPanels = normalizePanelsCount(Math.min(idealPanels, maxPanelsByArea));
     }
 
     const monthlyKwhTotalRounded0 = Math.round(monthlyKwhTotal);
     const monthlyKwhCoveredRounded0 = Math.round(monthlyKwhCovered);
     monthlyKwhTotalText.textContent = `${monthlyKwhTotalRounded0} kWh`;
     monthlyKwhCoveredText.textContent = `${monthlyKwhCoveredRounded0} kWh`;
-    const monthlyKwpRaw = panelsNeeded * panelPower;
+    const monthlyKwpRaw = fitPanels * panelPower;
     const monthlyKwpAdjusted = monthlyKwpRaw / 1.2;
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
     panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
-    panelsNeededText.textContent = `${panelsNeeded} painéis`;
+    panelsNeededText.textContent = `${idealPanels} painéis`;
     if (batteryCapacityText) {
-      const capacity = wantsBattery ? getBatteryCapacityKwh(panelsNeeded) : 0;
+      const capacity = wantsBattery ? getBatteryCapacityKwh(fitPanels) : 0;
       batteryCapacityText.textContent = capacity > 0 ? `${capacity} kWh` : "Sem bateria";
     }
-    lastPanelsNeeded = panelsNeeded;
-    updatePanelOverlay(panelsNeeded);
+    lastPanelsIdeal = idealPanels;
+    lastPanelsNeeded = fitPanels;
+    updatePanelOverlay(fitPanels);
+    if (roofPanelsWarning) {
+      if (maxPanelsByArea !== null && fitPanels < idealPanels) {
+        roofPanelsWarning.textContent = `No telhado só cabem ~${fitPanels} painéis (pela área). A solução ideal seriam ${idealPanels}.`;
+      } else {
+        roofPanelsWarning.textContent = "";
+      }
+    }
     renderAdditionalSummary();
 
 
@@ -488,7 +525,7 @@
 	    const batteryMaxChargeFraction = 0.9; // não consideramos carga a 100% (SOC máx ~90%)
 
 
-    const productionMonthly = productionPerPanel * panelsNeeded;
+    const productionMonthly = productionPerPanel * fitPanels;
     const alignmentFactor = 0.85; // 85% eficiência temporal (ajustável)
     const producaoperca = productionMonthly * alignmentFactor;
 
@@ -502,7 +539,7 @@
 	    // Bateria: sem perdas/eficiências (pedido), apenas limite de carga (SOC máx ~90%).
 	    // - "para a bateria" = energia carregada a partir do excedente
 	    // - "da bateria" = energia entregue ao consumo (igual à carregada)
-	    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(panelsNeeded) || 0) : 0;
+		    const batteryCapacityKwh = wantsBattery ? (getBatteryCapacityKwh(fitPanels) || 0) : 0;
 	    const batteryChargeMaxMonthly = wantsBattery ? (batteryCapacityKwh * batteryMaxChargeFraction) * 30 : 0;
 	    const batteryChargeNeededMonthly = wantsBattery ? Math.max(0, consumoTotal - homeFromCoveredBase) : 0;
 	    const batteryChargedMonthlyBase = wantsBattery
@@ -1305,9 +1342,15 @@
     const additionalPanels = getAdditionalCount();
     const basePanelsNeeded = panelsFromKwp(requiredKwpRounded);
     const monthlyKwpNeeded = requiredKwpRounded;
-    let totalPanels = basePanelsNeeded + additionalPanels;
-    if (totalPanels % 2 !== 0) {
-      totalPanels += 1;
+    let totalPanelsIdeal = basePanelsNeeded + additionalPanels;
+    if (totalPanelsIdeal % 2 !== 0) {
+      totalPanelsIdeal += 1;
+    }
+    totalPanelsIdeal = normalizePanelsCount(totalPanelsIdeal);
+    const maxPanelsByArea = estimateMaxPanelsByRoofArea();
+    let totalPanels = totalPanelsIdeal;
+    if (maxPanelsByArea !== null) {
+      totalPanels = normalizePanelsCount(Math.min(totalPanelsIdeal, maxPanelsByArea));
     }
     const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
     const batteryCapacityKwh = wantsBattery ? getBatteryCapacityKwh(totalPanels) : null;
@@ -1358,6 +1401,8 @@
       mapSnapshotMime: mapSnapshot ? mapSnapshot.mime : null,
       mapSnapshotUrl,
       panelsNeeded: totalPanels,
+      panelsIdeal: totalPanelsIdeal,
+      panelsMaxFitByArea: maxPanelsByArea,
       updatedAt: new Date().toISOString()
     };
     persistJson("contactQuestionnaire", payload);
