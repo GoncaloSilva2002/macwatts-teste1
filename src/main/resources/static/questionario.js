@@ -162,7 +162,7 @@
   // Dimensões do painel e espaçamento (metros).
   const PANEL_WIDTH_M = 2.1;
   const PANEL_HEIGHT_M = 1.3;
-  const PANEL_GAP_M = 0.05;
+  const PANEL_GAP_M = 0.1;
 
   function getLatitudeZone(lat, minLat, maxLat, zoneCount = 3, labels = null) {
     if (!Number.isFinite(lat) || !Number.isFinite(minLat) || !Number.isFinite(maxLat)) {
@@ -344,10 +344,21 @@
     let normalized = Number(count);
     if (!Number.isFinite(normalized) || normalized < 0) normalized = 0;
     normalized = Math.floor(normalized);
-    if (normalized > 1 && normalized % 2 !== 0) {
+    if (normalized % 2 !== 0) {
       normalized -= 1;
     }
     return Math.max(0, normalized);
+  }
+
+  const ALLOWED_PANEL_COUNTS = [0, 2, 4, 6, 8, 10, 12, 14, 16, 20, 22, 26];
+
+  function clampPanelsToAllowedCount(count) {
+    const normalized = normalizePanelsCount(count);
+    for (let i = ALLOWED_PANEL_COUNTS.length - 1; i >= 0; i--) {
+      const allowed = ALLOWED_PANEL_COUNTS[i];
+      if (allowed <= normalized) return allowed;
+    }
+    return 0;
   }
 
   function selectedAdditionalLabels() {
@@ -494,16 +505,16 @@
     if (idealPanels % 2 !== 0) {
       idealPanels += 1;
     }
-    idealPanels = normalizePanelsCount(idealPanels);
+    idealPanels = clampPanelsToAllowedCount(idealPanels);
     const maxPanelsByArea = estimateMaxPanelsByRoofArea();
     let fitPanels = idealPanels;
     if (maxPanelsByArea !== null) {
-      fitPanels = normalizePanelsCount(Math.min(idealPanels, maxPanelsByArea));
+      fitPanels = clampPanelsToAllowedCount(Math.min(idealPanels, maxPanelsByArea));
     }
     const fitPanelsRequest = fitPanels;
     const placedPanels = updatePanelOverlay(fitPanelsRequest);
     if (Number.isFinite(placedPanels) && placedPanels >= 0) {
-      fitPanels = normalizePanelsCount(Math.min(fitPanelsRequest, placedPanels));
+      fitPanels = clampPanelsToAllowedCount(Math.min(fitPanelsRequest, placedPanels));
     }
 
     lastPanelsIdeal = idealPanels;
@@ -528,7 +539,7 @@
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
       if (fitPanels > 0 && fitPanels < idealPanels) {
-        roofPanelsWarning.textContent = `No telhado só cabem ~${fitPanels} painéis. A solução ideal seriam ${idealPanels}.`;
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
       } else if (fitPanelsRequest === 0 && idealPanels > 0) {
         roofPanelsWarning.textContent = "O telhado pode não ter área suficiente para painéis.";
       } else {
@@ -1030,7 +1041,8 @@
       clearPanelOverlay();
       return 0;
     }
-    if (!Number.isFinite(panelsNeeded) || panelsNeeded <= 0) {
+    const requestedPanels = clampPanelsToAllowedCount(panelsNeeded);
+    if (!requestedPanels) {
       clearPanelOverlay();
       return 0;
     }
@@ -1047,11 +1059,12 @@
       return 0;
     }
     const angle = getPolygonOrientation(polygonPoints);
-    const positions = buildPanelPositions(polygonPoints, panelsNeeded, angle);
+    const positions = buildPanelPositions(polygonPoints, requestedPanels, angle);
+    const drawableCount = clampPanelsToAllowedCount(positions.length);
     clearPanelOverlay();
     panelPolygonsLatLng = [];
 
-    positions.forEach((pos) => {
+    positions.slice(0, drawableCount).forEach((pos) => {
       const halfW = pos.width / 2;
       const halfH = pos.height / 2;
       const relCorners = [
@@ -1082,7 +1095,7 @@
       panelPolygons.push(panel);
       panelPolygonsLatLng.push(path);
     });
-    return positions.length;
+    return drawableCount;
   }
 
   openAdditionalInfo.addEventListener("click", () => {
@@ -1378,15 +1391,15 @@
     if (totalPanelsIdeal % 2 !== 0) {
       totalPanelsIdeal += 1;
     }
-    totalPanelsIdeal = normalizePanelsCount(totalPanelsIdeal);
+    totalPanelsIdeal = clampPanelsToAllowedCount(totalPanelsIdeal);
     const maxPanelsByArea = estimateMaxPanelsByRoofArea();
     let totalPanels = totalPanelsIdeal;
     if (maxPanelsByArea !== null) {
-      totalPanels = normalizePanelsCount(Math.min(totalPanelsIdeal, maxPanelsByArea));
+      totalPanels = clampPanelsToAllowedCount(Math.min(totalPanelsIdeal, maxPanelsByArea));
     }
     const placedPanels = updatePanelOverlay(totalPanels);
     if (Number.isFinite(placedPanels) && placedPanels >= 0) {
-      totalPanels = normalizePanelsCount(Math.min(totalPanels, placedPanels));
+      totalPanels = clampPanelsToAllowedCount(Math.min(totalPanels, placedPanels));
     }
     const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
     const batteryCapacityKwh = wantsBattery ? getBatteryCapacityKwh(totalPanels) : null;
