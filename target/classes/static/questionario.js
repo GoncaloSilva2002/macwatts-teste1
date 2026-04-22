@@ -46,6 +46,16 @@
     });
   }
 
+  async function idbDel(key) {
+    const db = await openLocalDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("uploads", "readwrite");
+      tx.objectStore("uploads").delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   const clientAddressTitle = document.getElementById("clientAddressTitle");
   const centerText = document.getElementById("centerText");
   const areaText = document.getElementById("areaText");
@@ -100,6 +110,7 @@
   const openInvoiceCapture = document.getElementById("openInvoiceCapture");
   const invoiceMenu = document.getElementById("invoiceMenu");
   const invoiceStatus = document.getElementById("invoiceStatus");
+  const invoiceRemoveBtn = document.getElementById("invoiceRemoveBtn");
   const cameraOverlay = document.getElementById("cameraOverlay");
   const cameraPreview = document.getElementById("cameraPreview");
   const cameraCanvas = document.getElementById("cameraCanvas");
@@ -125,6 +136,7 @@
   let invoiceFile = loadStoredJson("invoiceFile");
   let invoicePhoto = loadStoredJson("invoicePhoto");
   let invoicePdf = loadStoredJson("invoicePdf");
+  const defaultInvoiceHint = invoiceStatus ? invoiceStatus.textContent : "";
   const GOOGLE_MAPS_KEY = "AIzaSyDb_0_8iNV8ojyt8nbqXKt7SBVgWGc-qRs";
 
   if (roofData && !Number.isFinite(roofData.areaSqm) && Number.isFinite(roofData.area)) {
@@ -198,6 +210,53 @@
     zoneText.textContent = currentZoneLabel ? `Zona: ${currentZoneLabel}` : "Zona: configure latitudes";
   }
 
+  function getInvoiceAttachment() {
+    return [invoiceFile, invoicePdf, invoicePhoto].find((item) => item && item.dataUrl) || null;
+  }
+
+  function updateInvoiceUi(nextText = null) {
+    if (!invoiceStatus || !invoiceRemoveBtn) return;
+    const attachment = getInvoiceAttachment();
+    const hasAttachment = Boolean(attachment);
+
+    if (nextText !== null) {
+      invoiceStatus.textContent = nextText;
+    } else if (hasAttachment) {
+      invoiceStatus.textContent = attachment && attachment.name ? `Fatura anexada: ${attachment.name}` : "Fatura anexada.";
+    } else {
+      invoiceStatus.textContent = defaultInvoiceHint;
+    }
+
+    if (hasAttachment) {
+      invoiceRemoveBtn.hidden = false;
+    } else {
+      invoiceRemoveBtn.hidden = true;
+    }
+  }
+
+  async function clearInvoiceAttachment() {
+    invoiceFile = null;
+    invoicePhoto = null;
+    invoicePdf = null;
+
+    ["invoiceFile", "invoicePhoto", "invoicePdf"].forEach((key) => {
+      sessionStorage.removeItem(key);
+      localStorage.removeItem(key);
+    });
+
+    if (invoiceCapture) invoiceCapture.value = "";
+    if (invoicePdfUpload) invoicePdfUpload.value = "";
+
+    try {
+      await idbDel("invoiceFile");
+      await idbDel("invoiceKind");
+    } catch (error) {
+      console.warn("Falha ao remover fatura do IndexedDB:", error);
+    }
+
+    updateInvoiceUi();
+  }
+
   function initQuestionnaireMap() {
     map = new google.maps.Map(document.getElementById("roofPreview"), {
       center: { lat: 38.7223, lng: -9.1393 },
@@ -247,6 +306,8 @@
   backBtn.addEventListener("click", () => {
     window.location.href = "geocoding.html";
   });
+
+  updateInvoiceUi();
 
   function getAdditionalCount() {
     return [
@@ -962,11 +1023,12 @@
 
   async function handleInvoiceFile(file) {
     if (!file) return;
-    invoiceStatus.textContent = "A anexar fatura…";
+    updateInvoiceUi("A anexar fatura…");
+    if (invoiceRemoveBtn) invoiceRemoveBtn.hidden = true;
 
     const reader = new FileReader();
     reader.onerror = () => {
-      invoiceStatus.textContent = "Falha ao anexar a fatura.";
+      updateInvoiceUi("Falha ao anexar a fatura.");
     };
     reader.onload = async () => {
       const dataUrl = String(reader.result || "");
@@ -996,7 +1058,7 @@
         localStorage.removeItem("invoicePdf");
       }
 
-      invoiceStatus.textContent = "Fatura anexada.";
+      updateInvoiceUi();
     };
     reader.readAsDataURL(file);
   }
@@ -1004,6 +1066,13 @@
   openInvoiceMenu.addEventListener("click", () => {
     invoiceMenu.classList.toggle("open");
   });
+
+  if (invoiceRemoveBtn) {
+    invoiceRemoveBtn.addEventListener("click", async () => {
+      invoiceMenu.classList.remove("open");
+      await clearInvoiceAttachment();
+    });
+  }
 
   openInvoiceCapture.addEventListener("click", () => {
     invoiceMenu.classList.remove("open");

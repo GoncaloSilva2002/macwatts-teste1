@@ -153,6 +153,37 @@ body {
   font-size: 0.95rem;
 }
 
+.invoice-status-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.invoice-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #b6c0cc;
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.invoice-remove:hover {
+  border-color: var(--primary);
+  color: var(--primary-strong);
+}
+
+.invoice-remove:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.5);
+  outline-offset: 2px;
+}
+
 .energy-charts {
   margin-top: 20px;
   display: grid;
