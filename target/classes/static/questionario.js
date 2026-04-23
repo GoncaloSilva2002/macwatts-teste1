@@ -540,7 +540,7 @@
     if (roofPanelsWarning) {
       if (fitPanels > 0 && fitPanels < idealPanels) {
         const fitKwp = roundToOneDecimal(fitPanels * panelPower);
-        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente (${fitKwp.toFixed(1)} kWp) ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${fitPanels} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
       } else if (fitPanelsRequest === 0 && idealPanels > 0) {
         roofPanelsWarning.textContent = "O telhado pode não ter área suficiente para painéis.";
       } else {
