@@ -298,8 +298,15 @@
       const fitPanels = Number(questionnaireData.panelsNeeded);
       const idealPanels = Number(questionnaireData.panelsIdeal);
       if (Number.isFinite(idealPanels) && idealPanels > 0 && fitPanels > 0 && fitPanels < idealPanels) {
-        lines.push(`Painéis: ${fitPanels} (Possível instalar no telhado)`);
-        warnings.push(`No telhado é possível instalar aproximadamente ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
+        const panelPowerKw = Number(questionnaireData.panelPowerKw);
+        const fitKwpSaved = Number(questionnaireData.panelsFitKwp);
+        const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
+          : (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(fitPanels * panelPowerKw)
+            : null;
+        const kwpLabel = fitKwpResolved !== null ? `(${fitKwpResolved.toFixed(1)} kWp) ` : "";
+
+        lines.push(`Painéis: ${kwpLabel}${fitPanels} (Possível instalar no telhado)`);
+        warnings.push(`No telhado é possível instalar aproximadamente ${kwpLabel}${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
       } else {
         lines.push(`Painéis necessários: ${fitPanels}`);
       }

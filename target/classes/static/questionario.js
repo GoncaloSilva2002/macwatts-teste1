@@ -539,7 +539,8 @@
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
       if (fitPanels > 0 && fitPanels < idealPanels) {
-        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
+        const fitKwp = roundToOneDecimal(fitPanels * panelPower);
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente (${fitKwp.toFixed(1)} kWp) ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
       } else if (fitPanelsRequest === 0 && idealPanels > 0) {
         roofPanelsWarning.textContent = "O telhado pode não ter área suficiente para painéis.";
       } else {
@@ -1403,6 +1404,7 @@
     }
     const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
     const batteryCapacityKwh = wantsBattery ? getBatteryCapacityKwh(totalPanels) : null;
+    const panelsFitKwp = roundToOneDecimal(totalPanels * panelPower);
 
     if (powerTerm && requiredKva && powerTerm < requiredKva) {
       powerTermWarning.textContent = "Aumentar o termo de potência.";
@@ -1451,6 +1453,7 @@
       mapSnapshotUrl,
       panelsNeeded: totalPanels,
       panelsIdeal: totalPanelsIdeal,
+      panelsFitKwp,
       panelsMaxFitByArea: maxPanelsByArea,
       panelsPlaced: placedPanels,
       updatedAt: new Date().toISOString()
