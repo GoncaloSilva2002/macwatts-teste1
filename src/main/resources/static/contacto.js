@@ -151,8 +151,8 @@
       } else {
         sumPricePerKwh.textContent = "Preço por kWh: 0.20€";
       }
-      sumKwh.textContent = `Consumo mensal (total): ${Number(questionnaireData.monthlyKwhEstimate || 0).toFixed(1)} kWh`;
-      sumKwhCovered.textContent = `Consumo mensal: ${Number(questionnaireData.monthlyKwhCoveredEstimate || 0).toFixed(1)} kWh`;
+      sumKwh.textContent = `Consumo mensal: ${Number(questionnaireData.monthlyKwhEstimate || 0).toFixed(1)} kWh`;
+      sumKwhCovered.textContent = `Consumo coberto no Periodo Solar: ${Number(questionnaireData.monthlyKwhCoveredEstimate || 0).toFixed(1)} kWh`;
       if (questionnaireData.zoneLabel) {
         sumZone.textContent = `Zona: ${questionnaireData.zoneLabel}`;
       } else {
@@ -166,7 +166,8 @@
       const fitPanels = Number(questionnaireData.panelsNeeded || 0);
       const idealPanels = Number(questionnaireData.panelsIdeal || 0);
       if (fitPanels > 0 && idealPanels > 0 && fitPanels < idealPanels) {
-        sumPanels.textContent = `Painéis necessários: ${fitPanels} (cabem) / ${idealPanels} (ideal)`;
+        sumPanels.textContent = `Painéis necessários: ${fitPanels} (Possivel instalar no telhado)
+        Painéis necessários: ${idealPanels} (Ideal para cobrir consumo)`;
       } else {
         sumPanels.textContent = `Painéis necessários: ${fitPanels} painéis`;
       }
@@ -240,6 +241,12 @@
     return Math.round((value + Number.EPSILON) * 10) / 10;
   }
 
+  function requiredKvaFromKwp(kwp) {
+    if (!Number.isFinite(kwp) || kwp <= 0) return null;
+    const inverterPowerKw = kwp / 1.2;
+    return inverterPowerKw / 0.9;
+  }
+
   function formatAddressShort(address) {
     const raw = String(address || "").trim();
     if (!raw) return "";
@@ -258,6 +265,8 @@
   function buildQuestionnaireSummary(questionnaireData, roofData) {
     if (!questionnaireData) return "";
     const lines = [];
+    const warnings = [];
+
     if (roofData && roofData.areaSqm !== undefined) {
       lines.push(`Área do telhado: ${Number(roofData.areaSqm || 0).toFixed(1)} m²`);
     }
@@ -278,14 +287,24 @@
     if (questionnaireData.monthlyKwpNeeded) {
       const roundedKwp = roundToOneDecimal(Number(questionnaireData.monthlyKwpNeeded));
       lines.push(`kWp necessário: ${roundedKwp.toFixed(1)} kWp`);
+
+      const powerTerm = Number(questionnaireData.powerTerm);
+      const requiredKva = requiredKvaFromKwp(roundedKwp);
+      if (Number.isFinite(powerTerm) && powerTerm > 0 && requiredKva && powerTerm < requiredKva) {
+        warnings.push("O termo de potência pode ser insuficiente para esta instalação.");
+      }
     }
-    if (questionnaireData.panelsNeeded) {
+    if (questionnaireData.panelsNeeded !== undefined && questionnaireData.panelsNeeded !== null) {
       const fitPanels = Number(questionnaireData.panelsNeeded);
       const idealPanels = Number(questionnaireData.panelsIdeal);
       if (Number.isFinite(idealPanels) && idealPanels > 0 && fitPanels > 0 && fitPanels < idealPanels) {
         lines.push(`Painéis (cabem/ideal): ${fitPanels}/${idealPanels}`);
+        warnings.push(`No telhado é possível instalar aproximadamente ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
       } else {
         lines.push(`Painéis necessários: ${fitPanels}`);
+      }
+      if (Number.isFinite(idealPanels) && idealPanels > 0 && Number.isFinite(fitPanels) && fitPanels === 0) {
+        warnings.push("O telhado pode não ter área suficiente para painéis.");
       }
     }
 
@@ -316,6 +335,12 @@
     if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasWaterHeater) extras.push("Esquentador de água elétrico");
     if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAerotermia) extras.push("Aerotermia");
     if (extras.length) lines.push(`Equipamentos: ${extras.join(", ")}`);
+
+    if (warnings.length) {
+      lines.push("");
+      lines.push("Avisos:");
+      warnings.forEach((warning) => lines.push(`- ${warning}`));
+    }
 
     return lines.join("\n");
   }
