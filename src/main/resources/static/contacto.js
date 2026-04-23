@@ -298,7 +298,7 @@
       const fitPanels = Number(questionnaireData.panelsNeeded);
       const idealPanels = Number(questionnaireData.panelsIdeal);
       if (Number.isFinite(idealPanels) && idealPanels > 0 && fitPanels > 0 && fitPanels < idealPanels) {
-        lines.push(`Painéis (cabem/ideal): ${fitPanels}/${idealPanels}`);
+        lines.push(`Painéis: ${fitPanels} (Possível instalar no telhado)`);
         warnings.push(`No telhado é possível instalar aproximadamente ${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
       } else {
         lines.push(`Painéis necessários: ${fitPanels}`);
