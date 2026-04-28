@@ -1,6 +1,7 @@
 let map;
 let marker = null;
-let polygon = null;
+let roofPolygons = [];
+let selectedRoofIndex = -1;
 let drawing = false;
 let roofPoints = [];
 let geocoder;
@@ -143,30 +144,70 @@ addressInput.addEventListener("keypress", (e) => {
 function startDrawing() {
   drawing = true;
   roofPoints = [];
-
-  if (polygon) polygon.setMap(null);
   setDrawingCursor(true);
 
-  message.textContent = "Modo desenho ativo";
-  drawRoofBtn.textContent = "Concluir";
+  message.textContent = "Modo desenho ativo (clique para adicionar pontos)";
+  drawRoofBtn.textContent = "Concluir face";
 }
 
 function addRoofPoint(lat, lng) {
   roofPoints.push({ lat, lng });
 
-  if (polygon) polygon.setMap(null);
-
-  polygon = new google.maps.Polygon({
+  // Preview: desenha a face em construção sem afetar as já existentes.
+  if (roofPolygons._draft) roofPolygons._draft.setMap(null);
+  roofPolygons._draft = new google.maps.Polygon({
     paths: roofPoints,
     strokeColor: "#14b8a6",
     strokeWeight: 2,
     fillColor: "#14b8a6",
-    fillOpacity: 0.2
+    fillOpacity: 0.2,
+    clickable: false
   });
 
-  polygon.setMap(map);
+  roofPolygons._draft.setMap(map);
 
   houseInfo.textContent = `Pontos: ${roofPoints.length}`;
+}
+
+function applyPolygonStyle(polygon, selected) {
+  polygon.setOptions({
+    strokeColor: selected ? "#0f766e" : "#14b8a6",
+    strokeOpacity: 1,
+    strokeWeight: selected ? 3 : 2,
+    fillColor: "#14b8a6",
+    fillOpacity: selected ? 0.35 : 0.2,
+    clickable: true
+  });
+}
+
+function selectRoofPolygon(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= roofPolygons.length) return;
+  selectedRoofIndex = index;
+  roofPolygons.forEach((poly, i) => applyPolygonStyle(poly, i === selectedRoofIndex));
+  const selectedData = roofPolygonsData()[selectedRoofIndex];
+  if (selectedData) {
+    houseInfo.textContent = `Face selecionada: ${selectedRoofIndex + 1} • Área: ${selectedData.areaSqm.toFixed(1)} m²`;
+  }
+  setNextStepEnabled(true);
+}
+
+function roofPolygonsData() {
+  return roofPolygons.map((poly) => {
+    const path = poly.getPath().getArray().map((latLng) => ({
+      lat: latLng.lat(),
+      lng: latLng.lng()
+    }));
+    const areaSqm = google.maps.geometry.spherical.computeArea(
+      path.map((p) => new google.maps.LatLng(p.lat, p.lng))
+    );
+    const center = path.reduce(
+      (acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }),
+      { lat: 0, lng: 0 }
+    );
+    center.lat /= path.length;
+    center.lng /= path.length;
+    return { points: path, areaSqm, center };
+  });
 }
 
 function finishDrawing() {
@@ -176,32 +217,58 @@ function finishDrawing() {
   }
 
   drawing = false;
-  drawRoofBtn.textContent = "Desenhar";
+  drawRoofBtn.textContent = "Desenhar face";
   setDrawingCursor(false);
 
-  const area = google.maps.geometry.spherical.computeArea(
-    roofPoints.map(p => new google.maps.LatLng(p.lat, p.lng))
-  );
+  if (roofPolygons._draft) {
+    roofPolygons._draft.setMap(null);
+    roofPolygons._draft = null;
+  }
 
-  houseInfo.textContent = `Área: ${area.toFixed(1)} m²`;
-  message.textContent = "Telhado criado";
-  setNextStepEnabled(true);
+  const poly = new google.maps.Polygon({
+    paths: roofPoints,
+    strokeColor: "#14b8a6",
+    strokeWeight: 2,
+    fillColor: "#14b8a6",
+    fillOpacity: 0.2,
+    clickable: true
+  });
+
+  poly.addListener("click", () => {
+    const idx = roofPolygons.indexOf(poly);
+    if (idx >= 0) selectRoofPolygon(idx);
+  });
+
+  poly.setMap(map);
+  roofPolygons.push(poly);
+
+  message.textContent = `Face ${roofPolygons.length} criada. Clique numa face para selecionar.`;
+  selectRoofPolygon(roofPolygons.length - 1);
 }
 
 function clearRoof() {
-  if (polygon) polygon.setMap(null);
-
+  if (roofPolygons._draft) {
+    roofPolygons._draft.setMap(null);
+    roofPolygons._draft = null;
+  }
+  roofPolygons.forEach((poly) => poly.setMap(null));
+  roofPolygons = [];
+  selectedRoofIndex = -1;
   roofPoints = [];
   drawing = false;
   setDrawingCursor(false);
 
-  drawRoofBtn.textContent = "Desenhar";
+  drawRoofBtn.textContent = "Desenhar face";
   houseInfo.textContent = "Casa: nenhuma";
   message.textContent = "Limpo";
   setNextStepEnabled(false);
 }
 
 function getCenter() {
+  if (selectedRoofIndex >= 0) {
+    const data = roofPolygonsData()[selectedRoofIndex];
+    return data ? data.center : null;
+  }
   let lat = 0, lng = 0;
   roofPoints.forEach(p => {
     lat += p.lat;
@@ -211,21 +278,28 @@ function getCenter() {
 }
 
 function saveData() {
-  if (roofPoints.length < 3) {
-    message.textContent = "Desenha o telhado primeiro";
+  if (selectedRoofIndex < 0 || roofPolygons.length === 0) {
+    message.textContent = "Desenha pelo menos uma face do telhado e seleciona-a";
     return false;
   }
 
-  const areaSqm = google.maps.geometry.spherical.computeArea(
-    roofPoints.map(p => new google.maps.LatLng(p.lat, p.lng))
-  );
+  const polygons = roofPolygonsData();
+  const selected = polygons[selectedRoofIndex];
+  if (!selected) {
+    message.textContent = "Seleciona uma face do telhado";
+    return false;
+  }
 
   const data = {
     address: addressInput.value,
-    center: getCenter(),
-    points: roofPoints,
-    area: areaSqm,
-    areaSqm
+    // Compatibilidade: mantém o formato antigo com a face selecionada.
+    center: selected.center,
+    points: selected.points,
+    area: selected.areaSqm,
+    areaSqm: selected.areaSqm,
+    // Novo: lista de faces + face selecionada.
+    polygons,
+    selectedPolygonIndex: selectedRoofIndex
   };
 
   sessionStorage.setItem("roofSelection", JSON.stringify(data));

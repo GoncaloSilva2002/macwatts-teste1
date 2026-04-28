@@ -282,8 +282,8 @@
     if (questionnaireData.powerTerm !== undefined && Number.isFinite(Number(questionnaireData.powerTerm))) {
       lines.push(`Termo de potência: ${Number(questionnaireData.powerTerm).toFixed(2)} kVA`);
     }
-    if (questionnaireData.monthlyKwhEstimate) lines.push(`Consumo mensal (total): ${Number(questionnaireData.monthlyKwhEstimate).toFixed(1)} kWh`);
-    if (questionnaireData.monthlyKwhCoveredEstimate) lines.push(`Consumo mensal: ${Number(questionnaireData.monthlyKwhCoveredEstimate).toFixed(1)} kWh`);
+    if (questionnaireData.monthlyKwhEstimate) lines.push(`Consumo mensal: ${Number(questionnaireData.monthlyKwhEstimate).toFixed(1)} kWh`);
+    if (questionnaireData.monthlyKwhCoveredEstimate) lines.push(`Consumo no Periodo Solar: ${Number(questionnaireData.monthlyKwhCoveredEstimate).toFixed(1)} kWh`);
     if (questionnaireData.monthlyKwpNeeded) {
       const roundedKwp = roundToOneDecimal(Number(questionnaireData.monthlyKwpNeeded));
       lines.push(`kWp necessário: ${roundedKwp.toFixed(1)} kWp`);
