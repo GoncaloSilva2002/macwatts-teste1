@@ -603,9 +603,9 @@
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
       const capacity = Number.isFinite(lastPanelsCapacity) ? clampPanelsToAllowedCount(lastPanelsCapacity) : null;
-      if (fitPanelsRequest > 0 && capacity !== null && capacity < fitPanelsRequest) {
+      if (idealPanels > 0 && capacity !== null && capacity < idealPanels) {
         const fitKwp = roundToOneDecimal(capacity * panelPower);
-        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${capacity} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${fitPanelsRequest} painéis.`;
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${capacity} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
       } else {
         roofPanelsWarning.textContent = "";
       }
@@ -770,7 +770,11 @@
     }
 
     if (powerTermWarning) {
-      const requiredKva = requiredKvaFromKwp(requiredKwpRounded);
+      const panelsForPowerTerm = Number.isFinite(lastPanelsFit) ? clampPanelsToAllowedCount(lastPanelsFit) : 0;
+      const kwpForPowerTerm = panelsForPowerTerm > 0
+        ? roundToOneDecimal(panelsForPowerTerm * panelPower)
+        : requiredKwpRounded;
+      const requiredKva = requiredKvaFromKwp(kwpForPowerTerm);
       if (powerTerm && requiredKva && powerTerm < requiredKva) {
         powerTermWarning.textContent = "O termo de potência pode ser insuficiente para esta instalação.";
         if (showPowerTermPopup && powerTermModal && powerTermModalText) {
@@ -1040,51 +1044,56 @@
       { width: base.width, height: base.height },
       { width: base.height, height: base.width }
     ];
-    const offsetSteps = [0, 0.33, 0.66];
+    const offsetSteps = [0, 0.2, 0.4, 0.6, 0.8];
 
     const origin = getPolygonCenter(polygonPoints);
-    const rotation = Number.isFinite(angle) ? angle : 0;
-    const rotatedPolygon = polygonPoints.map((point) => rotatePoint(point, -rotation, origin));
+    const baseRotation = Number.isFinite(angle) ? angle : 0;
+    const rotationCandidates = [baseRotation, baseRotation + Math.PI / 24, baseRotation - Math.PI / 24];
+    let best = [];
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    rotatedPolygon.forEach((point) => {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    });
+    for (const rotation of rotationCandidates) {
+      const rotatedPolygon = polygonPoints.map((point) => rotatePoint(point, -rotation, origin));
 
-    for (const orient of orientations) {
-      const width = orient.width;
-      const height = orient.height;
-      const gap = base.gap;
-      const stepX = width + gap;
-      const stepY = height + gap;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+      rotatedPolygon.forEach((point) => {
+        minX = Math.min(minX, point.x);
+        minY = Math.min(minY, point.y);
+        maxX = Math.max(maxX, point.x);
+        maxY = Math.max(maxY, point.y);
+      });
 
-      for (const ox of offsetSteps) {
-        for (const oy of offsetSteps) {
-          const startX = minX + width / 2 + stepX * ox;
-          const startY = minY + height / 2 + stepY * oy;
-          const placed = [];
+      for (const orient of orientations) {
+        const width = orient.width;
+        const height = orient.height;
+        const gap = base.gap;
+        const stepX = width + gap;
+        const stepY = height + gap;
 
-          for (let y = startY; y <= maxY - height / 2; y += stepY) {
-            for (let x = startX; x <= maxX - width / 2; x += stepX) {
-              if (canPlaceRect({ x, y }, width, height, rotatedPolygon, base.gap)) {
-                const worldCenter = rotatePoint({ x, y }, rotation, origin);
-                placed.push({ x: worldCenter.x, y: worldCenter.y, width, height, angle: rotation });
-                if (placed.length >= count) break;
+        for (const ox of offsetSteps) {
+          for (const oy of offsetSteps) {
+            const startX = minX + width / 2 + stepX * ox;
+            const startY = minY + height / 2 + stepY * oy;
+            const placed = [];
+
+            for (let y = startY; y <= maxY - height / 2; y += stepY) {
+              for (let x = startX; x <= maxX - width / 2; x += stepX) {
+                if (canPlaceRect({ x, y }, width, height, rotatedPolygon, base.gap)) {
+                  const worldCenter = rotatePoint({ x, y }, rotation, origin);
+                  placed.push({ x: worldCenter.x, y: worldCenter.y, width, height, angle: rotation });
+                  if (placed.length >= count) break;
+                }
               }
+              if (placed.length >= count) break;
             }
-            if (placed.length >= count) break;
-          }
-          if (placed.length >= count) {
-            return placed;
-          }
-          if (placed.length > best.length) {
-            best = placed;
+            if (placed.length >= count) {
+              return placed;
+            }
+            if (placed.length > best.length) {
+              best = placed;
+            }
           }
         }
       }
