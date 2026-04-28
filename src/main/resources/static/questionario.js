@@ -604,7 +604,7 @@
       const placed = Number.isFinite(placedPanels) ? clampPanelsToAllowedCount(placedPanels) : null;
       if (fitPanelsRequest > 0 && placed !== null && placed < fitPanelsRequest) {
         const fitKwp = roundToOneDecimal(placed * panelPower);
-        roofPanelsWarning.textContent = `Nas faces selecionadas só cabem aproximadamente ${placed} painéis (${fitKwp.toFixed(1)} kWp).`;
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${placed} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${fitPanelsRequest} painéis.`;
       } else {
         roofPanelsWarning.textContent = "";
       }
