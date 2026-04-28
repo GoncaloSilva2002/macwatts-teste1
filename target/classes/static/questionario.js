@@ -256,6 +256,7 @@
   let lastPanelsFitRequested = 0;
   let lastPanelsMaxByArea = null;
   let lastPanelsPlaced = null;
+  let lastPanelsCapacity = null;
 
   if (!roofData || !roofData.center || !selectedRoofFaces.length) {
     statusEl.textContent = "Não encontrámos seleção de telhado. Volta ao passo anterior.";
@@ -601,10 +602,10 @@
     }
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
-      const placed = Number.isFinite(placedPanels) ? clampPanelsToAllowedCount(placedPanels) : null;
-      if (fitPanelsRequest > 0 && placed !== null && placed < fitPanelsRequest) {
-        const fitKwp = roundToOneDecimal(placed * panelPower);
-        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${placed} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${fitPanelsRequest} painéis.`;
+      const capacity = Number.isFinite(lastPanelsCapacity) ? clampPanelsToAllowedCount(lastPanelsCapacity) : null;
+      if (fitPanelsRequest > 0 && capacity !== null && capacity < fitPanelsRequest) {
+        const fitKwp = roundToOneDecimal(capacity * panelPower);
+        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${capacity} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${fitPanelsRequest} painéis.`;
       } else {
         roofPanelsWarning.textContent = "";
       }
@@ -1121,6 +1122,59 @@
     return alloc;
   }
 
+  function estimateFaceCapacityPanels(face, projection, angle) {
+    const facePoints = (face.points || [])
+      .map((point) => projection.fromLatLngToDivPixel(new google.maps.LatLng(point.lat, point.lng)))
+      .map((point) => ({ x: point.x, y: point.y }));
+    if (facePoints.length < 3) return 0;
+    const originalArea = roofData.areaSqm;
+    roofData.areaSqm = Number(face.areaSqm) || originalArea;
+    const positions = buildPanelPositions(facePoints, 200, angle);
+    roofData.areaSqm = originalArea;
+    return clampPanelsToAllowedCount(positions.length);
+  }
+
+  function allocatePanelsWithCaps(totalPanels, faces, caps) {
+    const requested = clampPanelsToAllowedCount(totalPanels);
+    if (!requested || !faces.length) return [];
+    const safeCaps = Array.isArray(caps) && caps.length === faces.length ? caps.map((c) => clampPanelsToAllowedCount(c || 0)) : faces.map(() => requested);
+    let allocation = allocatePanelsByArea(requested, faces).map((n) => clampPanelsToAllowedCount(n));
+
+    let overflow = 0;
+    allocation = allocation.map((n, i) => {
+      const cap = safeCaps[i] || 0;
+      if (n > cap) {
+        overflow += n - cap;
+        return cap;
+      }
+      return n;
+    });
+
+    if (overflow > 0) {
+      // Redistribui o excesso por faces com capacidade disponível.
+      for (let i = 0; i < allocation.length && overflow > 0; i++) {
+        const cap = safeCaps[i] || 0;
+        const room = Math.max(0, cap - allocation[i]);
+        const add = Math.min(room, overflow);
+        allocation[i] += add;
+        overflow -= add;
+      }
+    }
+
+    // Ajuste final para garantir que a soma não excede o pedido (e é par).
+    const total = allocation.reduce((a, b) => a + b, 0);
+    if (total > requested) {
+      let toRemove = total - requested;
+      for (let i = allocation.length - 1; i >= 0 && toRemove > 0; i--) {
+        const remove = Math.min(allocation[i], toRemove);
+        allocation[i] -= remove;
+        toRemove -= remove;
+      }
+    }
+    allocation = allocation.map((n) => clampPanelsToAllowedCount(n));
+    return allocation;
+  }
+
   function updatePanelOverlay(panelsNeeded) {
     if (!map || !overlayView) return null;
     if (!roofData || !selectedRoofFaces.length) {
@@ -1130,6 +1184,7 @@
     const requestedPanels = clampPanelsToAllowedCount(panelsNeeded);
     if (!requestedPanels) {
       clearPanelOverlay();
+      lastPanelsCapacity = 0;
       return 0;
     }
     const projection = overlayView.getProjection();
@@ -1141,7 +1196,17 @@
     clearPanelOverlay();
     panelPolygonsLatLng = [];
 
-    const allocations = allocatePanelsByArea(requestedPanels, selectedRoofFaces);
+    const faceCaps = selectedRoofFaces.map((face) => {
+      const facePoints = (face.points || [])
+        .map((point) => projection.fromLatLngToDivPixel(new google.maps.LatLng(point.lat, point.lng)))
+        .map((point) => ({ x: point.x, y: point.y }));
+      if (facePoints.length < 3) return 0;
+      const angle = getPolygonOrientation(facePoints);
+      return estimateFaceCapacityPanels(face, projection, angle);
+    });
+    lastPanelsCapacity = clampPanelsToAllowedCount(faceCaps.reduce((sum, c) => sum + (c || 0), 0));
+
+    const allocations = allocatePanelsWithCaps(requestedPanels, selectedRoofFaces, faceCaps);
     let totalPlaced = 0;
 
     selectedRoofFaces.forEach((face, faceIndex) => {
