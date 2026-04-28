@@ -601,11 +601,10 @@
     }
     lastPanelsNeeded = fitPanels;
     if (roofPanelsWarning) {
-      if (fitPanels > 0 && fitPanels < idealPanels) {
-        const fitKwp = roundToOneDecimal(fitPanels * panelPower);
-        roofPanelsWarning.textContent = `No telhado é possível instalar aproximadamente ${fitPanels} painéis (${fitKwp.toFixed(1)} kWp). No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`;
-      } else if (fitPanelsRequest === 0 && idealPanels > 0) {
-        roofPanelsWarning.textContent = "O telhado pode não ter área suficiente para painéis.";
+      const placed = Number.isFinite(placedPanels) ? clampPanelsToAllowedCount(placedPanels) : null;
+      if (fitPanelsRequest > 0 && placed !== null && placed < fitPanelsRequest) {
+        const fitKwp = roundToOneDecimal(placed * panelPower);
+        roofPanelsWarning.textContent = `Nas faces selecionadas só cabem aproximadamente ${placed} painéis (${fitKwp.toFixed(1)} kWp).`;
       } else {
         roofPanelsWarning.textContent = "";
       }
