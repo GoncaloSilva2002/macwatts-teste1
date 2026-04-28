@@ -1039,7 +1039,6 @@
     })();
     const realSize = getPanelPixelSize(polygonPoints, Number(roofData && roofData.areaSqm));
     const base = realSize || fallback;
-    let best = [];
     const orientations = [
       { width: base.width, height: base.height },
       { width: base.height, height: base.width }
