@@ -144,6 +144,60 @@
     roofData.areaSqm = roofData.area;
   }
 
+  function getSelectedRoofFaces(data) {
+    if (!data) return [];
+    const polygons = Array.isArray(data.polygons) ? data.polygons : null;
+    const selectedIndices = Array.isArray(data.selectedPolygonIndices)
+      ? data.selectedPolygonIndices.filter((v) => Number.isInteger(v))
+      : Number.isInteger(data.selectedPolygonIndex)
+        ? [data.selectedPolygonIndex]
+        : null;
+
+    if (polygons && selectedIndices && selectedIndices.length) {
+      return selectedIndices.map((idx) => polygons[idx]).filter(Boolean);
+    }
+    if (polygons && polygons.length) {
+      return polygons;
+    }
+    if (Array.isArray(data.points) && data.points.length >= 3) {
+      return [
+        {
+          points: data.points,
+          areaSqm: Number.isFinite(Number(data.areaSqm)) ? Number(data.areaSqm) : Number(data.area) || 0,
+          center: data.center || null
+        }
+      ];
+    }
+    return [];
+  }
+
+  function summarizeRoofFaces(faces) {
+    const validFaces = Array.isArray(faces) ? faces : [];
+    const totalAreaSqm = validFaces.reduce((sum, face) => sum + (Number(face && face.areaSqm) || 0), 0);
+    const center = (() => {
+      const weighted = validFaces.reduce(
+        (acc, face) => {
+          const c = face && face.center;
+          if (!c || !Number.isFinite(c.lat) || !Number.isFinite(c.lng)) return acc;
+          const w = Number.isFinite(face.areaSqm) && face.areaSqm > 0 ? face.areaSqm : 1;
+          return { lat: acc.lat + c.lat * w, lng: acc.lng + c.lng * w, w: acc.w + w };
+        },
+        { lat: 0, lng: 0, w: 0 }
+      );
+      if (!weighted.w) return null;
+      return { lat: weighted.lat / weighted.w, lng: weighted.lng / weighted.w };
+    })();
+    return { totalAreaSqm, center };
+  }
+
+  const selectedRoofFaces = getSelectedRoofFaces(roofData);
+  const selectedRoofSummary = summarizeRoofFaces(selectedRoofFaces);
+  if (roofData && selectedRoofFaces.length) {
+    roofData.areaSqm = selectedRoofSummary.totalAreaSqm || roofData.areaSqm;
+    roofData.area = roofData.areaSqm;
+    roofData.center = selectedRoofSummary.center || roofData.center;
+  }
+
   // Configuração da região (ajusta estes valores conforme o país/região)
   const REGION_LAT_MIN = 36.9;
   const REGION_LAT_MAX = 42.2;
@@ -190,7 +244,7 @@
 
   let map = null;
   let overlayView = null;
-  let roofPolygon = null;
+  let roofPolygons = [];
   let roofMarker = null;
   let panelPolygons = [];
   let panelPolygonsLatLng = [];
@@ -203,7 +257,7 @@
   let lastPanelsMaxByArea = null;
   let lastPanelsPlaced = null;
 
-  if (!roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
+  if (!roofData || !roofData.center || !selectedRoofFaces.length) {
     statusEl.textContent = "Não encontrámos seleção de telhado. Volta ao passo anterior.";
     clientAddressTitle.textContent = "Sem morada";
   } else {
@@ -286,21 +340,30 @@
     overlayView.draw = function () {};
     overlayView.setMap(map);
 
-    if (!roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
+    if (!roofData || !roofData.center || !selectedRoofFaces.length) {
       return;
     }
 
-    const path = roofData.points.map((point) => ({ lat: point.lat, lng: point.lng }));
-    roofPolygon = new google.maps.Polygon({
-      paths: path,
-      strokeColor: "#14b8a6",
-      strokeOpacity: 1,
-      strokeWeight: 2,
-      fillColor: "#14b8a6",
-      fillOpacity: 0.35,
-      clickable: false
+    roofPolygons.forEach((poly) => poly.setMap(null));
+    roofPolygons = [];
+
+    const bounds = new google.maps.LatLngBounds();
+    selectedRoofFaces.forEach((face) => {
+      const path = (face.points || []).map((point) => ({ lat: point.lat, lng: point.lng }));
+      if (path.length < 3) return;
+      const poly = new google.maps.Polygon({
+        paths: path,
+        strokeColor: "#14b8a6",
+        strokeOpacity: 1,
+        strokeWeight: 2,
+        fillColor: "#14b8a6",
+        fillOpacity: 0.35,
+        clickable: false
+      });
+      poly.setMap(map);
+      roofPolygons.push(poly);
+      path.forEach((point) => bounds.extend(point));
     });
-    roofPolygon.setMap(map);
 
     roofMarker = new google.maps.Marker({
       position: { lat: roofData.center.lat, lng: roofData.center.lng },
@@ -308,9 +371,9 @@
       clickable: false
     });
 
-    const bounds = new google.maps.LatLngBounds();
-    path.forEach((point) => bounds.extend(point));
-    map.fitBounds(bounds, { top: 20, right: 20, bottom: 20, left: 20 });
+    if (!bounds.isEmpty()) {
+      map.fitBounds(bounds, { top: 20, right: 20, bottom: 20, left: 20 });
+    }
     google.maps.event.addListenerOnce(map, "idle", () => renderPriceSlider());
   }
 
@@ -858,7 +921,7 @@
   }
 
   function buildStaticMapUrl() {
-    if (!map || !roofData || !roofData.center || !Array.isArray(roofData.points) || roofData.points.length < 3) {
+    if (!map || !roofData || !roofData.center || !selectedRoofFaces.length) {
       return null;
     }
     const center = map.getCenter();
@@ -871,13 +934,12 @@
     params.push("maptype=satellite");
     params.push(`key=${GOOGLE_MAPS_KEY}`);
 
-    const roofPath = buildPathParam(
-      { color: "0x14b8a6ff", fillColor: "0x14b8a655", weight: 2 },
-      roofData.points.map((point) => ({ lat: point.lat, lng: point.lng }))
-    );
-    if (roofPath) {
-      params.push(`path=${encodeURIComponent(roofPath)}`);
-    }
+    selectedRoofFaces.forEach((face) => {
+      const points = (face.points || []).map((point) => ({ lat: point.lat, lng: point.lng }));
+      if (points.length < 3) return;
+      const roofPath = buildPathParam({ color: "0x14b8a6ff", fillColor: "0x14b8a655", weight: 2 }, points);
+      if (roofPath) params.push(`path=${encodeURIComponent(roofPath)}`);
+    });
 
     if (panelPolygonsLatLng.length) {
       const panelOptions = { color: "0x0b0b0bff", fillColor: "0x0b0b0bb3", weight: 1 };
@@ -947,8 +1009,7 @@
     return { x: rect.width, y: rect.height };
   }
 
-  function getPanelPixelSize(polygonPoints) {
-    const roofAreaSqm = Number(roofData && roofData.areaSqm);
+  function getPanelPixelSize(polygonPoints, roofAreaSqm) {
     const areaPx = polygonAreaPx(polygonPoints);
     if (!Number.isFinite(roofAreaSqm) || roofAreaSqm <= 0 || areaPx <= 0) {
       return null;
@@ -972,7 +1033,7 @@
       const baseGap = Math.max(2, Math.round(baseWidth * 0.2));
       return { width: baseWidth, height: baseHeight, gap: baseGap };
     })();
-    const realSize = getPanelPixelSize(polygonPoints);
+    const realSize = getPanelPixelSize(polygonPoints, Number(roofData && roofData.areaSqm));
     const base = realSize || fallback;
     let best = [];
     const orientations = [
@@ -1036,9 +1097,34 @@
     panelPolygons = [];
   }
 
+  function allocatePanelsByArea(totalPanels, faces) {
+    const sanitizedTotal = clampPanelsToAllowedCount(totalPanels);
+    if (!sanitizedTotal || !faces.length) return [];
+    const areas = faces.map((f) => Math.max(0, Number(f && f.areaSqm) || 0));
+    const totalArea = areas.reduce((a, b) => a + b, 0);
+    if (!totalArea) {
+      const base = Math.floor(sanitizedTotal / faces.length);
+      const remainder = sanitizedTotal - base * faces.length;
+      return faces.map((_, i) => base + (i < remainder ? 1 : 0));
+    }
+    const raw = areas.map((a) => (a / totalArea) * sanitizedTotal);
+    const floors = raw.map((v) => Math.floor(v));
+    let remaining = sanitizedTotal - floors.reduce((a, b) => a + b, 0);
+    const order = raw
+      .map((v, i) => ({ i, frac: v - Math.floor(v) }))
+      .sort((a, b) => b.frac - a.frac)
+      .map((x) => x.i);
+    const alloc = floors.slice();
+    for (let k = 0; k < order.length && remaining > 0; k++) {
+      alloc[order[k]] += 1;
+      remaining -= 1;
+    }
+    return alloc;
+  }
+
   function updatePanelOverlay(panelsNeeded) {
     if (!map || !overlayView) return null;
-    if (!roofData || !Array.isArray(roofData.points) || roofData.points.length < 3) {
+    if (!roofData || !selectedRoofFaces.length) {
       clearPanelOverlay();
       return 0;
     }
@@ -1052,51 +1138,65 @@
       google.maps.event.addListenerOnce(map, "idle", () => updatePanelOverlay(panelsNeeded));
       return null;
     }
-    const polygonPoints = roofData.points
-      .map((point) => projection.fromLatLngToDivPixel(new google.maps.LatLng(point.lat, point.lng)))
-      .map((point) => ({ x: point.x, y: point.y }));
-    if (polygonPoints.length < 3) {
-      clearPanelOverlay();
-      return 0;
-    }
-    const angle = getPolygonOrientation(polygonPoints);
-    const positions = buildPanelPositions(polygonPoints, requestedPanels, angle);
-    const drawableCount = clampPanelsToAllowedCount(positions.length);
+
     clearPanelOverlay();
     panelPolygonsLatLng = [];
 
-    positions.slice(0, drawableCount).forEach((pos) => {
-      const halfW = pos.width / 2;
-      const halfH = pos.height / 2;
-      const relCorners = [
-        { x: -halfW, y: -halfH },
-        { x: halfW, y: -halfH },
-        { x: halfW, y: halfH },
-        { x: -halfW, y: halfH }
-      ];
-      const corners = relCorners.map((corner) => {
-        const rotated = rotatePoint(
-          { x: pos.x + corner.x, y: pos.y + corner.y },
-          pos.angle || 0,
-          { x: pos.x, y: pos.y }
-        );
-        return projection.fromDivPixelToLatLng(new google.maps.Point(rotated.x, rotated.y));
+    const allocations = allocatePanelsByArea(requestedPanels, selectedRoofFaces);
+    let totalPlaced = 0;
+
+    selectedRoofFaces.forEach((face, faceIndex) => {
+      const target = clampPanelsToAllowedCount(allocations[faceIndex] || 0);
+      if (!target) return;
+      const facePoints = (face.points || [])
+        .map((point) => projection.fromLatLngToDivPixel(new google.maps.LatLng(point.lat, point.lng)))
+        .map((point) => ({ x: point.x, y: point.y }));
+      if (facePoints.length < 3) return;
+
+      const angle = getPolygonOrientation(facePoints);
+      // Ajusta escala do painel por face (px/m) usando a área dessa face.
+      const originalArea = roofData.areaSqm;
+      roofData.areaSqm = Number(face.areaSqm) || originalArea;
+      const positions = buildPanelPositions(facePoints, target, angle);
+      roofData.areaSqm = originalArea;
+
+      const drawableCount = clampPanelsToAllowedCount(positions.length);
+      totalPlaced += drawableCount;
+
+      positions.slice(0, drawableCount).forEach((pos) => {
+        const halfW = pos.width / 2;
+        const halfH = pos.height / 2;
+        const relCorners = [
+          { x: -halfW, y: -halfH },
+          { x: halfW, y: -halfH },
+          { x: halfW, y: halfH },
+          { x: -halfW, y: halfH }
+        ];
+        const corners = relCorners.map((corner) => {
+          const rotated = rotatePoint(
+            { x: pos.x + corner.x, y: pos.y + corner.y },
+            pos.angle || 0,
+            { x: pos.x, y: pos.y }
+          );
+          return projection.fromDivPixelToLatLng(new google.maps.Point(rotated.x, rotated.y));
+        });
+        const path = corners.map((corner) => ({ lat: corner.lat(), lng: corner.lng() }));
+        const panel = new google.maps.Polygon({
+          paths: path,
+          strokeColor: "#0b0b0b",
+          strokeOpacity: 1,
+          strokeWeight: 1,
+          fillColor: "#0b0b0b",
+          fillOpacity: 0.7,
+          clickable: false
+        });
+        panel.setMap(map);
+        panelPolygons.push(panel);
+        panelPolygonsLatLng.push(path);
       });
-      const path = corners.map((corner) => ({ lat: corner.lat(), lng: corner.lng() }));
-      const panel = new google.maps.Polygon({
-        paths: path,
-        strokeColor: "#0b0b0b",
-        strokeOpacity: 1,
-        strokeWeight: 1,
-        fillColor: "#0b0b0b",
-        fillOpacity: 0.7,
-        clickable: false
-      });
-      panel.setMap(map);
-      panelPolygons.push(panel);
-      panelPolygonsLatLng.push(path);
     });
-    return drawableCount;
+
+    return clampPanelsToAllowedCount(totalPlaced);
   }
 
   openAdditionalInfo.addEventListener("click", () => {

@@ -1,7 +1,7 @@
 let map;
 let marker = null;
 let roofPolygons = [];
-let selectedRoofIndex = -1;
+let selectedRoofIndices = [];
 let drawing = false;
 let roofPoints = [];
 let geocoder;
@@ -180,15 +180,28 @@ function applyPolygonStyle(polygon, selected) {
   });
 }
 
-function selectRoofPolygon(index) {
+function toggleRoofPolygonSelection(index) {
   if (!Number.isInteger(index) || index < 0 || index >= roofPolygons.length) return;
-  selectedRoofIndex = index;
-  roofPolygons.forEach((poly, i) => applyPolygonStyle(poly, i === selectedRoofIndex));
-  const selectedData = roofPolygonsData()[selectedRoofIndex];
-  if (selectedData) {
-    houseInfo.textContent = `Face selecionada: ${selectedRoofIndex + 1} • Área: ${selectedData.areaSqm.toFixed(1)} m²`;
+  const existingIdx = selectedRoofIndices.indexOf(index);
+  if (existingIdx >= 0) {
+    selectedRoofIndices.splice(existingIdx, 1);
+  } else {
+    selectedRoofIndices.push(index);
   }
-  setNextStepEnabled(true);
+  selectedRoofIndices.sort((a, b) => a - b);
+
+  const selectedSet = new Set(selectedRoofIndices);
+  roofPolygons.forEach((poly, i) => applyPolygonStyle(poly, selectedSet.has(i)));
+
+  const polygons = roofPolygonsData();
+  const selected = selectedRoofIndices.map((i) => polygons[i]).filter(Boolean);
+  const totalArea = selected.reduce((sum, p) => sum + (p.areaSqm || 0), 0);
+  if (selected.length) {
+    houseInfo.textContent = `Faces selecionadas: ${selectedRoofIndices.map((i) => i + 1).join(", ")} • Área total: ${totalArea.toFixed(1)} m²`;
+  } else {
+    houseInfo.textContent = `Face criada: ${roofPolygons.length}. Clique numa face para selecionar.`;
+  }
+  setNextStepEnabled(selectedRoofIndices.length > 0);
 }
 
 function roofPolygonsData() {
@@ -236,14 +249,14 @@ function finishDrawing() {
 
   poly.addListener("click", () => {
     const idx = roofPolygons.indexOf(poly);
-    if (idx >= 0) selectRoofPolygon(idx);
+    if (idx >= 0) toggleRoofPolygonSelection(idx);
   });
 
   poly.setMap(map);
   roofPolygons.push(poly);
 
-  message.textContent = `Face ${roofPolygons.length} criada. Clique numa face para selecionar.`;
-  selectRoofPolygon(roofPolygons.length - 1);
+  message.textContent = `Face ${roofPolygons.length} criada. Clique para selecionar (pode selecionar várias).`;
+  toggleRoofPolygonSelection(roofPolygons.length - 1);
 }
 
 function clearRoof() {
@@ -253,7 +266,7 @@ function clearRoof() {
   }
   roofPolygons.forEach((poly) => poly.setMap(null));
   roofPolygons = [];
-  selectedRoofIndex = -1;
+  selectedRoofIndices = [];
   roofPoints = [];
   drawing = false;
   setDrawingCursor(false);
@@ -265,41 +278,48 @@ function clearRoof() {
 }
 
 function getCenter() {
-  if (selectedRoofIndex >= 0) {
-    const data = roofPolygonsData()[selectedRoofIndex];
-    return data ? data.center : null;
-  }
-  let lat = 0, lng = 0;
-  roofPoints.forEach(p => {
-    lat += p.lat;
-    lng += p.lng;
-  });
-  return { lat: lat / roofPoints.length, lng: lng / roofPoints.length };
+  const polygons = roofPolygonsData();
+  const selected = selectedRoofIndices.map((i) => polygons[i]).filter(Boolean);
+  if (!selected.length) return null;
+  const weighted = selected.reduce(
+    (acc, p) => {
+      const w = Number.isFinite(p.areaSqm) && p.areaSqm > 0 ? p.areaSqm : 1;
+      return {
+        lat: acc.lat + p.center.lat * w,
+        lng: acc.lng + p.center.lng * w,
+        w: acc.w + w
+      };
+    },
+    { lat: 0, lng: 0, w: 0 }
+  );
+  if (!weighted.w) return selected[0].center;
+  return { lat: weighted.lat / weighted.w, lng: weighted.lng / weighted.w };
 }
 
 function saveData() {
-  if (selectedRoofIndex < 0 || roofPolygons.length === 0) {
-    message.textContent = "Desenha pelo menos uma face do telhado e seleciona-a";
+  if (!roofPolygons.length || !selectedRoofIndices.length) {
+    message.textContent = "Desenha pelo menos uma face do telhado e seleciona uma ou mais faces";
     return false;
   }
 
   const polygons = roofPolygonsData();
-  const selected = polygons[selectedRoofIndex];
-  if (!selected) {
-    message.textContent = "Seleciona uma face do telhado";
-    return false;
-  }
+  const selectedPolygons = selectedRoofIndices.map((i) => polygons[i]).filter(Boolean);
+  if (!selectedPolygons.length) return false;
+
+  const totalAreaSqm = selectedPolygons.reduce((sum, p) => sum + (p.areaSqm || 0), 0);
+  const center = getCenter();
+  const legacyPrimary = selectedPolygons[0];
 
   const data = {
     address: addressInput.value,
-    // Compatibilidade: mantém o formato antigo com a face selecionada.
-    center: selected.center,
-    points: selected.points,
-    area: selected.areaSqm,
-    areaSqm: selected.areaSqm,
-    // Novo: lista de faces + face selecionada.
+    // Compatibilidade: mantém o formato antigo com a "primeira" face selecionada.
+    center: center || (legacyPrimary ? legacyPrimary.center : null),
+    points: legacyPrimary ? legacyPrimary.points : [],
+    area: totalAreaSqm,
+    areaSqm: totalAreaSqm,
+    // Novo: lista de faces + faces selecionadas.
     polygons,
-    selectedPolygonIndex: selectedRoofIndex
+    selectedPolygonIndices: selectedRoofIndices.slice()
   };
 
   sessionStorage.setItem("roofSelection", JSON.stringify(data));
