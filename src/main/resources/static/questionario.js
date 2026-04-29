@@ -937,7 +937,9 @@
     params.push(`zoom=${zoom}`);
     params.push("size=640x400");
     params.push("scale=2");
-    params.push("maptype=satellite");
+    // Nota: Google Static Maps pode bloquear "satellite/hybrid" em contas/regiões (ex.: EEE).
+    // Usamos "roadmap" para garantir que o mapa consegue ser gerado e anexado no email.
+    params.push("maptype=roadmap");
     params.push(`key=${GOOGLE_MAPS_KEY}`);
 
     selectedRoofFaces.forEach((face) => {
