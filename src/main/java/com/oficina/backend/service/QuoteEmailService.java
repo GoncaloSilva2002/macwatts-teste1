@@ -374,9 +374,6 @@ public class QuoteEmailService {
                     .append(formatCoord(request.getLongitude()))
                     .append("\n");
         }
-        if (!safe(request.getMapSnapshotUrl()).isEmpty()) {
-            body.append("Mapa (link): ").append(safe(request.getMapSnapshotUrl())).append("\n");
-        }
         if (!safe(request.getQuestionnaireSummary()).isEmpty()) {
             body.append("\nQuestionário:\n");
             body.append(safe(request.getQuestionnaireSummary())).append("\n");

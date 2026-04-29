@@ -228,9 +228,27 @@ body { margin: 0; font-family: Manrope, sans-serif; }
   }
 
   .panel {
-    top: 150px;
+    position: fixed;
     left: 6px;
     right: 6px;
+    bottom: 10px;
+    top: auto;
     width: auto;
+    max-height: 44vh;
+    overflow: auto;
   }
+}
+
+/* Durante o desenho no telemóvel, encolhe o painel para não tapar o telhado. */
+body.drawing-mode .panel {
+  max-height: 92px;
+  overflow: hidden;
+}
+
+body.drawing-mode .panel-text,
+body.drawing-mode .panel-divider,
+body.drawing-mode #houseInfo,
+body.drawing-mode #message,
+body.drawing-mode #nextStepBtn {
+  display: none;
 }

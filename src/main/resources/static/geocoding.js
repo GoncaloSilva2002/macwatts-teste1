@@ -23,6 +23,7 @@ setNextStepEnabled(false);
 
 function setDrawingCursor(enabled) {
   if (!map) return;
+  document.body.classList.toggle("drawing-mode", enabled);
   map.getDiv().classList.toggle("drawing", enabled);
   map.setOptions({
     draggableCursor: enabled ? pencilCursor : null,
