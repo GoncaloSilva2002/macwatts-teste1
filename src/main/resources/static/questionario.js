@@ -418,6 +418,8 @@
 
   function clampPanelsToAllowedCount(count) {
     const normalized = normalizePanelsCount(count);
+    // Entre 22 e 26 não existe 24 no produto: subimos para 26.
+    if (normalized > 22 && normalized < 26) return 26;
     for (let i = ALLOWED_PANEL_COUNTS.length - 1; i >= 0; i--) {
       const allowed = ALLOWED_PANEL_COUNTS[i];
       if (allowed <= normalized) return allowed;
@@ -1618,7 +1620,6 @@
         phaseType: phaseTypeInputs.find((input) => input.checked)?.value || null,
         usageTime: usageTimeInputs.find((input) => input.checked)?.value || null
       },
-      invoiceFile,
       mapSnapshotBase64: mapSnapshot ? mapSnapshot.dataUrl : null,
       mapSnapshotName: mapSnapshot ? mapSnapshot.name : null,
       mapSnapshotMime: mapSnapshot ? mapSnapshot.mime : null,

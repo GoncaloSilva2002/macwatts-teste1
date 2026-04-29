@@ -201,6 +201,9 @@
           }
         }
       }
+      if (!questionnaireData) {
+        questionnaireData = {};
+      }
       if (questionnaireData && !questionnaireData.mapSnapshotBase64) {
         const storedMap = await idbGet("mapSnapshot");
         if (storedMap) {
@@ -303,10 +306,10 @@
         const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
           : (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(fitPanels * panelPowerKw)
             : null;
-        const kwpLabel = fitKwpResolved !== null ? `(${fitKwpResolved.toFixed(1)} kWp) ` : "";
+        const kwpSuffix = fitKwpResolved !== null ? ` (${fitKwpResolved.toFixed(1)} kWp)` : "";
 
-        lines.push(`Painéis: ${kwpLabel}${fitPanels} (Possível instalar no telhado)`);
-        warnings.push(`No telhado é possível instalar aproximadamente ${kwpLabel}${fitPanels} painéis. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
+        lines.push(`Painéis: ${fitPanels}${kwpSuffix} (Possível instalar no telhado)`);
+        warnings.push(`No telhado é possível instalar aproximadamente ${fitPanels} painéis${kwpSuffix}. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
       } else {
         lines.push(`Painéis necessários: ${fitPanels}`);
       }
