@@ -186,16 +186,13 @@ public class QuoteEmailService {
     }
 
     private Map<String, Object> buildResendAttachment(byte[] bytes, String nameRaw, String mimeRaw, String base64) {
-        if (bytes == null || bytes.length == 0) {
-            return null;
-        }
         String resolvedMime = resolveMime(mimeRaw, base64);
         String name = (nameRaw == null || nameRaw.isBlank()) ? "fatura-luz" : nameRaw.trim();
         if (!name.contains(".") && resolvedMime != null) {
             name = name + mimeToExtension(resolvedMime);
         }
         String content = extractBase64Content(base64);
-        if ((content == null || content.isBlank()) && bytes.length > 0) {
+        if ((content == null || content.isBlank()) && bytes != null && bytes.length > 0) {
             content = Base64.getEncoder().encodeToString(bytes);
         }
         if (content == null || content.isBlank()) {
@@ -376,6 +373,9 @@ public class QuoteEmailService {
                     .append(", lon ")
                     .append(formatCoord(request.getLongitude()))
                     .append("\n");
+        }
+        if (!safe(request.getMapSnapshotUrl()).isEmpty()) {
+            body.append("Mapa (link): ").append(safe(request.getMapSnapshotUrl())).append("\n");
         }
         if (!safe(request.getQuestionnaireSummary()).isEmpty()) {
             body.append("\nQuestionário:\n");

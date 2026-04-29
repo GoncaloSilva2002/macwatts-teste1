@@ -300,7 +300,19 @@
     if (questionnaireData.panelsNeeded !== undefined && questionnaireData.panelsNeeded !== null) {
       const fitPanels = Number(questionnaireData.panelsNeeded);
       const idealPanels = Number(questionnaireData.panelsIdeal);
-      if (Number.isFinite(idealPanels) && idealPanels > 0 && fitPanels > 0 && fitPanels < idealPanels) {
+      const maxFitByArea = Number(questionnaireData.panelsMaxFitByArea);
+      const placedPanels = Number(questionnaireData.panelsPlaced);
+      const constrainedByRoof =
+        (Number.isFinite(maxFitByArea) && maxFitByArea > 0 && maxFitByArea < idealPanels)
+        || (Number.isFinite(placedPanels) && placedPanels > 0 && placedPanels < idealPanels);
+      const showRoofConstraintWarning =
+        Number.isFinite(idealPanels)
+        && idealPanels > 0
+        && fitPanels > 0
+        && fitPanels < idealPanels
+        && constrainedByRoof;
+
+      if (showRoofConstraintWarning) {
         const panelPowerKw = Number(questionnaireData.panelPowerKw);
         const fitKwpSaved = Number(questionnaireData.panelsFitKwp);
         const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
@@ -357,6 +369,9 @@
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+
+    // Garantir que temos o questionário carregado mesmo que o hydrate async ainda não tenha terminado.
+    questionnaireData = questionnaireData || loadStoredJson("contactQuestionnaire") || {};
 
     if (!invoiceFile) {
       try {
