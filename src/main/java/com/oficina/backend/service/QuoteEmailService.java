@@ -94,8 +94,6 @@ public class QuoteEmailService {
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
         MapSnapshot mapSnapshot = resolveMapSnapshot(request);
 
-        boolean companySent = false;
-
         sendEmail(
                 companyEmail.trim(),
                 "Novo Pedido de Orçamento Solar",
@@ -113,7 +111,6 @@ public class QuoteEmailService {
                 mapSnapshot.mime,
                 mapSnapshot.base64
         );
-        companySent = true;
 
         return true;
     }
@@ -122,8 +119,6 @@ public class QuoteEmailService {
         byte[] invoicePrimary = decodeBase64(request.getInvoiceAttachmentBase64());
         byte[] invoiceAlt = decodeBase64(request.getInvoiceAttachmentBase64Alt());
         MapSnapshot mapSnapshot = resolveMapSnapshot(request);
-
-        boolean companySent = false;
 
         sendResendEmail(
                 companyEmail.trim(),
@@ -142,7 +137,6 @@ public class QuoteEmailService {
                 mapSnapshot.mime,
                 mapSnapshot.base64
         );
-        companySent = true;
 
         return true;
     }

@@ -35,7 +35,7 @@ public class QuoteController {
         try {
             boolean sent = quoteEmailService.sendQuotePdf(request);
             if (sent) {
-                return ResponseEntity.ok("Email enviado com sucesso para cliente e empresa.");
+                return ResponseEntity.ok("Email enviado com sucesso para a empresa.");
             }
             return ResponseEntity.ok("SMTP nao configurado: fluxo concluido em modo teste.");
         } catch (IllegalArgumentException ex) {
