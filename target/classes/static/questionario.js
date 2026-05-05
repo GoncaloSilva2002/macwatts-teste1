@@ -206,12 +206,12 @@
 
   // Produção média mensal por painel (0.53 kWp) em kWh, por zona.
   const ZONE_PANEL_MONTHLY_KWH = {
-    "Norte": 112.5,
-    "Centro": 115,
-    "Centro Sul": 129,
-    "Sul": 137.5
+    "Norte": 59.6,
+    "Centro":61,
+    "Centro Sul": 68.5,
+    "Sul": 72.9
   };
-  const DEFAULT_PANEL_MONTHLY_KWH = 112.5;
+  const DEFAULT_PANEL_MONTHLY_KWH = 66.25;
 
   // Dimensões do painel e espaçamento (metros).
   const PANEL_WIDTH_M = 2.1;
