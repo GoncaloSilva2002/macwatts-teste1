@@ -900,12 +900,15 @@
   }
 
   function encodePolyline(points) {
+    // Menos precisão = URLs mais curtos (Static Maps tem limites de tamanho).
+    // 1e4 (~11m) é suficiente para o desenho de polígonos/painéis no contexto do questionário.
+    const scale = 1e4;
     let lastLat = 0;
     let lastLng = 0;
     let result = "";
     points.forEach((point) => {
-      const lat = Math.round(point.lat * 1e5);
-      const lng = Math.round(point.lng * 1e5);
+      const lat = Math.round(point.lat * scale);
+      const lng = Math.round(point.lng * scale);
       const dLat = lat - lastLat;
       const dLng = lng - lastLng;
       lastLat = lat;
@@ -1048,6 +1051,9 @@
       { width: base.height, height: base.width }
     ];
     const offsetSteps = [0, 0.2, 0.4, 0.6, 0.8];
+    // A margem à borda não deve ser tão grande como o espaçamento entre painéis;
+    // caso contrário, para pedidos pequenos (ex.: 2 painéis) podemos acabar a "perder" capacidade.
+    const edgeMargin = Math.max(0, base.gap * 0.5);
 
     const origin = getPolygonCenter(polygonPoints);
     const baseRotation = Number.isFinite(angle) ? angle : 0;
@@ -1083,7 +1089,7 @@
 
             for (let y = startY; y <= maxY - height / 2; y += stepY) {
               for (let x = startX; x <= maxX - width / 2; x += stepX) {
-                if (canPlaceRect({ x, y }, width, height, rotatedPolygon, base.gap)) {
+                if (canPlaceRect({ x, y }, width, height, rotatedPolygon, edgeMargin)) {
                   const worldCenter = rotatePoint({ x, y }, rotation, origin);
                   placed.push({ x: worldCenter.x, y: worldCenter.y, width, height, angle: rotation });
                   if (placed.length >= count) break;
@@ -1112,26 +1118,28 @@
   function allocatePanelsByArea(totalPanels, faces) {
     const sanitizedTotal = clampPanelsToAllowedCount(totalPanels);
     if (!sanitizedTotal || !faces.length) return [];
+    const totalPairs = Math.floor(sanitizedTotal / 2);
+    if (!totalPairs) return faces.map(() => 0);
     const areas = faces.map((f) => Math.max(0, Number(f && f.areaSqm) || 0));
     const totalArea = areas.reduce((a, b) => a + b, 0);
     if (!totalArea) {
-      const base = Math.floor(sanitizedTotal / faces.length);
-      const remainder = sanitizedTotal - base * faces.length;
-      return faces.map((_, i) => base + (i < remainder ? 1 : 0));
+      const basePairs = Math.floor(totalPairs / faces.length);
+      const remainderPairs = totalPairs - basePairs * faces.length;
+      return faces.map((_, i) => (basePairs + (i < remainderPairs ? 1 : 0)) * 2);
     }
-    const raw = areas.map((a) => (a / totalArea) * sanitizedTotal);
-    const floors = raw.map((v) => Math.floor(v));
-    let remaining = sanitizedTotal - floors.reduce((a, b) => a + b, 0);
-    const order = raw
+    const rawPairs = areas.map((a) => (a / totalArea) * totalPairs);
+    const floors = rawPairs.map((v) => Math.floor(v));
+    let remainingPairs = totalPairs - floors.reduce((a, b) => a + b, 0);
+    const order = rawPairs
       .map((v, i) => ({ i, frac: v - Math.floor(v) }))
       .sort((a, b) => b.frac - a.frac)
       .map((x) => x.i);
     const alloc = floors.slice();
-    for (let k = 0; k < order.length && remaining > 0; k++) {
+    for (let k = 0; k < order.length && remainingPairs > 0; k++) {
       alloc[order[k]] += 1;
-      remaining -= 1;
+      remainingPairs -= 1;
     }
-    return alloc;
+    return alloc.map((p) => p * 2);
   }
 
   function estimateFaceCapacityPanels(face, projection, angle) {
