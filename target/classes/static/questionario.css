@@ -46,6 +46,9 @@ body {
   letter-spacing: 0.2px;
   color: #111827;
   white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .brand img {
