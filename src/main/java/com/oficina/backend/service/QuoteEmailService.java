@@ -325,34 +325,6 @@ public class QuoteEmailService {
         return commaIndex >= 0 ? base64Raw.substring(commaIndex + 1) : base64Raw;
     }
 
-    private String buildClientBody(QuoteEmailRequest request) {
-        StringBuilder body = new StringBuilder();
-        body.append("Segue o pedido de orçamento solar.\n\n");
-        body.append("Cliente: ").append(safe(request.getClientName())).append("\n");
-        body.append("Email do cliente: ").append(safe(request.getClientEmail())).append("\n");
-        if (!safe(request.getClientPhone()).isEmpty()) {
-            body.append("Telemóvel: ").append(safe(request.getClientPhone())).append("\n");
-        }
-        if (!safe(request.getClientNif()).isEmpty()) {
-            body.append("NIF: ").append(safe(request.getClientNif())).append("\n");
-        }
-        if (!safe(request.getAddressSummary()).isEmpty()) {
-            body.append("Morada: ").append(safe(request.getAddressSummary())).append("\n");
-        }
-        if (request.getLatitude() != null && request.getLongitude() != null) {
-            body.append("Coordenadas: lat ")
-                    .append(formatCoord(request.getLatitude()))
-                    .append(", lon ")
-                    .append(formatCoord(request.getLongitude()))
-                    .append("\n");
-        }
-        if (!safe(request.getQuestionnaireSummary()).isEmpty()) {
-            body.append("\nQuestionário:\n");
-            body.append(safe(request.getQuestionnaireSummary())).append("\n");
-        }
-        return body.toString();
-    }
-
     private String buildCompanyBody(QuoteEmailRequest request) {
         StringBuilder body = new StringBuilder();
         body.append("Segue o pedido de orçamento solar.\n\n");
