@@ -116,8 +116,10 @@
   const cameraPreview = document.getElementById("cameraPreview");
   const cameraCanvas = document.getElementById("cameraCanvas");
   const closeCamera = document.getElementById("closeCamera");
+  const switchCamera = document.getElementById("switchCamera");
   const capturePhoto = document.getElementById("capturePhoto");
   let cameraStream = null;
+  let cameraFacingMode = "environment";
   const hasPool = document.getElementById("hasPool");
   const hasAc = document.getElementById("hasAc");
   const hasEv = document.getElementById("hasEv");
@@ -1356,10 +1358,51 @@
     handleInvoiceFile(file);
   });
 
+  function stopCameraStream() {
+    if (!cameraStream) return;
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+
+  async function getCameraStream(preferredFacingMode) {
+    const facingCandidates = [];
+    if (preferredFacingMode) facingCandidates.push(preferredFacingMode);
+    if (preferredFacingMode !== "environment") facingCandidates.push("environment");
+    if (preferredFacingMode !== "user") facingCandidates.push("user");
+
+    const tried = new Set();
+    for (const facingMode of facingCandidates) {
+      if (!facingMode || tried.has(facingMode)) continue;
+      tried.add(facingMode);
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { exact: facingMode } }
+        });
+      } catch (error) {
+        // Continue to fallback attempts.
+      }
+
+      try {
+        return await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: facingMode } }
+        });
+      } catch (error) {
+        // Continue to fallback attempts.
+      }
+    }
+
+    return await navigator.mediaDevices.getUserMedia({ video: true });
+  }
+
+  async function startCamera(preferredFacingMode) {
+    stopCameraStream();
+    cameraStream = await getCameraStream(preferredFacingMode);
+    cameraPreview.srcObject = cameraStream;
+  }
+
   async function openCamera() {
     try {
-      cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-      cameraPreview.srcObject = cameraStream;
+      await startCamera(cameraFacingMode);
       cameraOverlay.classList.add("open");
       cameraOverlay.setAttribute("aria-hidden", "false");
     } catch (error) {
@@ -1370,15 +1413,33 @@
   }
 
   function closeCameraModal() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop());
-      cameraStream = null;
-    }
+    stopCameraStream();
     cameraOverlay.classList.remove("open");
     cameraOverlay.setAttribute("aria-hidden", "true");
   }
 
   closeCamera.addEventListener("click", closeCameraModal);
+
+  if (switchCamera) {
+    switchCamera.addEventListener("click", async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      const nextMode = cameraFacingMode === "environment" ? "user" : "environment";
+      try {
+        await startCamera(nextMode);
+        cameraFacingMode = nextMode;
+      } catch (error) {
+        // If switching fails, keep the current stream/mode.
+        try {
+          await startCamera(cameraFacingMode);
+        } catch (innerError) {
+          closeCameraModal();
+          invoiceStatus.textContent = "Não foi possível trocar a câmara. Pode carregar uma foto.";
+          invoiceCapture.value = "";
+          invoiceCapture.click();
+        }
+      }
+    });
+  }
 
   cameraOverlay.addEventListener("click", (event) => {
     if (event.target === cameraOverlay) {
