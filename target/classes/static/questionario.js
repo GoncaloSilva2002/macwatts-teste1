@@ -522,7 +522,7 @@
     const batteryLabel = getBatteryLabel();
     const parts = [];
     if (labels.length > 0) {
-      parts.push(`Consumos: ${labels.join(", ")} (+${labels.length} painel/painéis)`);
+      parts.push(`Consumos: ${labels.join(", ")}`);
     }
     if (phaseLabel) {
       parts.push(`Luz: ${phaseLabel}`);
@@ -569,7 +569,7 @@
     const monthlyKwhForPanels = wantsBattery ? monthlyKwhTotal : monthlyKwhCovered;
     const requiredKwp = (monthlyKwhForPanels / productionPerPanel) * panelPower;
     const requiredKwpRounded = roundToOneDecimal(requiredKwp);
-    let idealPanels = panelsFromKwp(requiredKwpRounded) + getAdditionalCount();
+    let idealPanels = panelsFromKwp(requiredKwpRounded);
     if (idealPanels % 2 !== 0) {
       idealPanels += 1;
     }
@@ -1633,7 +1633,7 @@
     const additionalPanels = getAdditionalCount();
     const basePanelsNeeded = panelsFromKwp(requiredKwpRounded);
     const monthlyKwpNeeded = requiredKwpRounded;
-    let totalPanelsIdeal = basePanelsNeeded + additionalPanels;
+    let totalPanelsIdeal = basePanelsNeeded;
     if (totalPanelsIdeal % 2 !== 0) {
       totalPanelsIdeal += 1;
     }
