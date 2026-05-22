@@ -539,7 +539,9 @@
     const monthlyKwpRaw = fitPanels * panelPower;
     const monthlyKwpAdjusted = monthlyKwpRaw / 1.2;
     monthlyKwpText.textContent = `${requiredKwpRounded.toFixed(1)} kWp`;
-    panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
+    if (panelProductionText) {
+      panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
+    }
     panelsNeededText.textContent = `${fitPanels} painéis`;
     if (batteryCapacityText) {
       const capacity = wantsBattery ? getBatteryCapacityKwh(fitPanels) : 0;
