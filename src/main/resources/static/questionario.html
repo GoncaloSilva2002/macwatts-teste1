@@ -156,7 +156,7 @@
         </div>
         <hr class="divider" />
         <div>
-          <label class="label" for="priceLight">Preço da Eletricidade (S/Iva)</label>
+          <label class="label" for="priceLight">Preço do Consumo Total de Energia (S/Iva)</label>
           <div class="price-slider-wrap">
             <div class="price-value" id="priceValue">0€</div>
             <input id="priceLight" name="priceLight" type="range" min="0" max="2000" step="1" value="0">
@@ -173,11 +173,10 @@
           </div>
           <div class="calc-box">
             <div>Consumo total por mês: <strong id="monthlyKwhTotalText">0.0 kWh</strong></div>
-            <div>Consumo coberto no Periodo Solar: <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
-            <div>kWp necessário por mês: <strong id="monthlyKwpText">0.0 kWp</strong></div>
-            <div>Produção média por painel: <strong id="panelProductionText">0 kWh/mês</strong></div>
-            <div>Painéis Possiveis de Instalar: <strong id="panelsNeededText">0 painéis</strong></div>
-            <div>Capacidade diária da bateria: <strong id="batteryCapacityText">Sem bateria</strong></div>
+            <div>Autoconsumo Solar: <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
+            <div>Potência mínima a instalar: <strong id="monthlyKwpText">0.0 kWp</strong></div>
+            <div>Painéis: <strong id="panelsNeededText">0 painéis</strong></div>
+            <div>Capacidade de bateria: <strong id="batteryCapacityText">Sem bateria</strong></div>
             <div id="powerTermWarning" class="hint"></div>
             <div id="roofPanelsWarning" class="hint"></div>
           </div>
