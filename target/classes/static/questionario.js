@@ -555,11 +555,6 @@
         roofPanelsWarning.textContent = "";
       }
     }
-    renderAdditionalSummary();
-
-
-
-
 	    const batteryMaxChargeFraction = 0.9; // não consideramos carga a 100% (SOC máx ~90%)
 
 
