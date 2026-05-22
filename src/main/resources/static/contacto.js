@@ -57,7 +57,7 @@
   }
 
   function formatBatterySummary(questionnaireData) {
-    const hasBattery = questionnaireData && questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery;
+    const hasBattery = questionnaireData && questionnaireData.hasBattery;
     if (hasBattery === undefined) return "não disponível";
     if (!hasBattery) return "Não";
     const capacityRaw = questionnaireData ? questionnaireData.batteryCapacityKwh : null;
@@ -72,7 +72,7 @@
   }
 
   function formatBatteryCapacity(questionnaireData) {
-    const hasBattery = questionnaireData && questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery;
+    const hasBattery = questionnaireData && questionnaireData.hasBattery;
     if (!hasBattery) return "Sem bateria";
     const capacityRaw = questionnaireData ? questionnaireData.batteryCapacityKwh : null;
     const capacity = Number(capacityRaw);
@@ -88,6 +88,7 @@
   const sumAddress = document.getElementById("sumAddress");
   const sumCoords = document.getElementById("sumCoords");
   const sumArea = document.getElementById("sumArea");
+  const sumRoofType = document.getElementById("sumRoofType");
   const sumProperty = document.getElementById("sumProperty");
   const sumPrice = document.getElementById("sumPrice");
   const sumPricePerKwh = document.getElementById("sumPricePerKwh");
@@ -96,8 +97,6 @@
   const sumZone = document.getElementById("sumZone");
   const sumPanelProduction = document.getElementById("sumPanelProduction");
   const sumPanels = document.getElementById("sumPanels");
-  const sumAdditional = document.getElementById("sumAdditional");
-  const sumEquipments = document.getElementById("sumEquipments");
   const sumUsage = document.getElementById("sumUsage");
   const sumPhase = document.getElementById("sumPhase");
   const sumBattery = document.getElementById("sumBattery");
@@ -119,16 +118,8 @@
     }
 
     if (questionnaireData) {
-      const additionalLabels = [];
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasPool) additionalLabels.push("Piscina");
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAc) additionalLabels.push("Ar condicionado");
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasEv) additionalLabels.push("Carro para carregar");
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasRadiators) additionalLabels.push("Radiadores elétricos");
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasWaterHeater) additionalLabels.push("Esquentador de água elétrico");
-      if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAerotermia) additionalLabels.push("Aerotermia");
-
       const usageTimeLabel = (() => {
-        const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.usageTime;
+        const value = questionnaireData.usageTime;
         if (!value) return "não disponível";
         if (value === "manhas") return "Manhãs (08h:00-16h:00)";
         if (value === "tardes") return "Tardes (16h:00-00h:00)";
@@ -137,13 +128,19 @@
       })();
 
       const phaseLabel = (() => {
-        const value = questionnaireData.additionalInfo && questionnaireData.additionalInfo.phaseType;
+        const value = questionnaireData.phaseType;
         if (!value) return "não disponível";
         return value === "monofasica" ? "Monofásica" : "Trifásica";
       })();
 
       const batteryLabel = formatBatterySummary(questionnaireData);
 
+      if (sumRoofType) {
+        const roofTypeLabel = questionnaireData.roofType === "plano" ? "Plano (laje)"
+          : questionnaireData.roofType === "inclinado" ? "Inclinado"
+            : "não disponível";
+        sumRoofType.textContent = `Tipo de telhado: ${roofTypeLabel}`;
+      }
       sumProperty.textContent = `Tipo de imóvel: ${questionnaireData.propertyType || "não disponível"}`;
       sumPrice.textContent = `Preço da luz: ${Number(questionnaireData.priceLight || 0).toFixed(0)}€`;
       if (questionnaireData.pricePerKwh !== undefined && Number.isFinite(Number(questionnaireData.pricePerKwh))) {
@@ -171,8 +168,6 @@
       } else {
         sumPanels.textContent = `Painéis necessários: ${fitPanels} painéis`;
       }
-      sumAdditional.textContent = `Informações adicionais: ${additionalLabels.length ? "ver abaixo" : "nenhuma"}`;
-      sumEquipments.textContent = `Equipamentos: ${additionalLabels.length ? additionalLabels.join(", ") : "nenhum"}`;
       sumUsage.textContent = `Maior consumo: ${usageTimeLabel}`;
       sumPhase.textContent = `Tipo de contador: ${phaseLabel}`;
       sumBattery.textContent = `Bateria: ${batteryLabel}`;
@@ -273,6 +268,12 @@
     if (roofData && roofData.areaSqm !== undefined) {
       lines.push(`Área do telhado: ${Number(roofData.areaSqm || 0).toFixed(1)} m²`);
     }
+    if (questionnaireData.roofType) {
+      const roofTypeLabel = questionnaireData.roofType === "plano" ? "Plano (laje)"
+        : questionnaireData.roofType === "inclinado" ? "Inclinado"
+          : questionnaireData.roofType;
+      lines.push(`Tipo de telhado: ${roofTypeLabel}`);
+    }
     if (questionnaireData.propertyType) lines.push(`Tipo de imóvel: ${questionnaireData.propertyType}`);
     if (questionnaireData.priceLight !== undefined) lines.push(`Preço da luz: ${Number(questionnaireData.priceLight).toFixed(0)}€`);
     if (questionnaireData.pricePerKwh !== undefined && Number.isFinite(Number(questionnaireData.pricePerKwh))) {
@@ -330,7 +331,7 @@
       }
     }
 
-    const usageTime = questionnaireData.additionalInfo && questionnaireData.additionalInfo.usageTime;
+    const usageTime = questionnaireData.usageTime;
     if (usageTime) {
       const label = usageTime === "manhas" ? "Manhãs (08h:00-16h:00)"
         : usageTime === "tardes" ? "Tardes (16h:00-00h:00)"
@@ -339,24 +340,15 @@
       lines.push(`Maior consumo: ${label}`);
     }
 
-    const phaseType = questionnaireData.additionalInfo && questionnaireData.additionalInfo.phaseType;
+    const phaseType = questionnaireData.phaseType;
     if (phaseType) {
       lines.push(`Tipo de contador: ${phaseType === "monofasica" ? "Monofásica" : "Trifásica"}`);
     }
 
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasBattery !== undefined) {
+    if (questionnaireData.hasBattery !== undefined) {
       lines.push(`Bateria: ${formatBatterySummary(questionnaireData)}`);
       lines.push(`Capacidade da bateria: ${formatBatteryCapacity(questionnaireData)}`);
     }
-
-    const extras = [];
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasPool) extras.push("Piscina");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAc) extras.push("Ar condicionado");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasEv) extras.push("Carro para carregar");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasRadiators) extras.push("Radiadores elétricos");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasWaterHeater) extras.push("Esquentador de água elétrico");
-    if (questionnaireData.additionalInfo && questionnaireData.additionalInfo.hasAerotermia) extras.push("Aerotermia");
-    if (extras.length) lines.push(`Equipamentos: ${extras.join(", ")}`);
 
     if (warnings.length) {
       lines.push("");

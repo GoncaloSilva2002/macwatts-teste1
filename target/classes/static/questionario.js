@@ -95,12 +95,6 @@
   const chartSystemCaption = document.getElementById("chartSystemCaption");
   const chartBatteryUseCaption = document.getElementById("chartBatteryUseCaption");
   const chartNetworkCaption = document.getElementById("chartNetworkCaption");
-  const openAdditionalInfo = document.getElementById("openAdditionalInfo");
-  const additionalInfoText = document.getElementById("additionalInfoText");
-  const additionalModal = document.getElementById("additionalModal");
-  const additionalTitle = document.getElementById("additionalTitle");
-  const closeAdditionalModal = document.getElementById("closeAdditionalModal");
-  const additionalNext = document.getElementById("additionalNext");
   const powerTermModal = document.getElementById("powerTermModal");
   const powerTermModalText = document.getElementById("powerTermModalText");
   const powerTermClose = document.getElementById("powerTermClose");
@@ -120,18 +114,10 @@
   const capturePhoto = document.getElementById("capturePhoto");
   let cameraStream = null;
   let cameraFacingMode = "environment";
-  const hasPool = document.getElementById("hasPool");
-  const hasAc = document.getElementById("hasAc");
-  const hasEv = document.getElementById("hasEv");
-  const hasRadiators = document.getElementById("hasRadiators");
-  const hasWaterHeater = document.getElementById("hasWaterHeater");
-  const hasAerotermia = document.getElementById("hasAerotermia");
   const batteryChoiceInputs = Array.from(document.querySelectorAll('input[name="batteryChoice"]'));
   const phaseTypeInputs = Array.from(document.querySelectorAll('input[name="phaseType"]'));
   const usageTimeInputs = Array.from(document.querySelectorAll('input[name="usageTime"]'));
-  const modalSteps = Array.from(document.querySelectorAll(".modal-step"));
-  const totalAdditionalSteps = modalSteps.length;
-  let currentAdditionalStep = 1;
+  const roofTypeInputs = Array.from(document.querySelectorAll('input[name="roofType"]'));
   let showPowerTermPopup = false;
 
   let roofData = loadStoredJson("roofSelection");
@@ -386,17 +372,6 @@
 
   updateInvoiceUi();
 
-  function getAdditionalCount() {
-    return [
-      hasPool.checked,
-      hasAc.checked,
-      hasEv.checked,
-      hasRadiators.checked,
-      hasWaterHeater.checked,
-      hasAerotermia.checked
-    ].filter(Boolean).length;
-  }
-
   function estimateMaxPanelsByRoofArea() {
     const roofAreaSqm = roofData && Number.isFinite(Number(roofData.areaSqm)) ? Number(roofData.areaSqm) : null;
     if (!roofAreaSqm || roofAreaSqm <= 0) return null;
@@ -427,17 +402,6 @@
       if (allowed <= normalized) return allowed;
     }
     return 0;
-  }
-
-  function selectedAdditionalLabels() {
-    const labels = [];
-    if (hasPool.checked) labels.push("Piscina");
-    if (hasAc.checked) labels.push("Ar condicionado");
-    if (hasEv.checked) labels.push("Carro para carregar");
-    if (hasRadiators.checked) labels.push("Radiadores elétricos");
-    if (hasWaterHeater.checked) labels.push("Esquentador de água elétrico");
-    if (hasAerotermia.checked) labels.push("Aerotermia");
-    return labels;
   }
 
   function getBatteryLabel() {
@@ -513,29 +477,6 @@
     if (!Number.isFinite(kwp) || kwp <= 0) return null;
     const inverterPowerKw = kwp / 1.2;
     return inverterPowerKw / 0.9;
-  }
-
-  function renderAdditionalSummary() {
-    const labels = selectedAdditionalLabels();
-    const phaseLabel = getPhaseTypeLabel();
-    const usageLabel = getUsageTimeLabel();
-    const batteryLabel = getBatteryLabel();
-    const parts = [];
-    if (labels.length > 0) {
-      parts.push(`Consumos: ${labels.join(", ")}`);
-    }
-    if (phaseLabel) {
-      parts.push(`Luz: ${phaseLabel}`);
-    }
-    if (batteryLabel) {
-      parts.push(`Bateria: ${batteryLabel}`);
-    }
-    if (usageLabel) {
-      parts.push(`Mais consumo: ${usageLabel}`);
-    }
-    additionalInfoText.textContent = parts.length
-      ? parts.join(" | ")
-      : "Sem consumos adicionais selecionados.";
   }
 
   async function blobToDataUrl(blob) {
@@ -1285,11 +1226,6 @@
     return clampPanelsToAllowedCount(totalPlaced);
   }
 
-  openAdditionalInfo.addEventListener("click", () => {
-    additionalModal.classList.add("open");
-    setAdditionalStep(1);
-  });
-
   async function handleInvoiceFile(file) {
     if (!file) return;
     updateInvoiceUi("A anexar fatura…");
@@ -1479,16 +1415,6 @@
     }
   });
 
-  closeAdditionalModal.addEventListener("click", () => {
-    additionalModal.classList.remove("open");
-  });
-
-  additionalModal.addEventListener("click", (event) => {
-    if (event.target === additionalModal) {
-      additionalModal.classList.remove("open");
-    }
-  });
-
   if (powerTermClose) {
     powerTermClose.addEventListener("click", () => {
       powerTermModal.classList.remove("open");
@@ -1503,34 +1429,8 @@
     });
   }
 
-  function setAdditionalStep(step) {
-    currentAdditionalStep = Math.min(Math.max(step, 1), totalAdditionalSteps);
-    modalSteps.forEach((section) => {
-      section.classList.toggle("active", Number(section.dataset.step) === currentAdditionalStep);
-    });
-    additionalTitle.textContent = "Equipamentos ou Futuros Equipamentos";
-    additionalNext.textContent = currentAdditionalStep === totalAdditionalSteps ? "Concluir" : "Seguinte";
-  }
-
-  additionalNext.addEventListener("click", () => {
-    if (currentAdditionalStep === totalAdditionalSteps) {
-      additionalModal.classList.remove("open");
-      renderAdditionalSummary();
-      return;
-    }
-    setAdditionalStep(currentAdditionalStep + 1);
-  });
-
-  [hasPool, hasAc, hasEv, hasRadiators, hasWaterHeater, hasAerotermia].forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
-      renderAdditionalSummary();
-      renderPriceSlider();
-    });
-  });
-
-  [...batteryChoiceInputs, ...phaseTypeInputs, ...usageTimeInputs].forEach((input) => {
+  [...batteryChoiceInputs, ...phaseTypeInputs, ...usageTimeInputs, ...roofTypeInputs].forEach((input) => {
     input.addEventListener("change", () => {
-      renderAdditionalSummary();
       renderPriceSlider();
     });
   });
@@ -1549,24 +1449,22 @@
       const propertyOption = form.querySelector(`input[name="propertyType"][value="${savedQuestionnaire.propertyType}"]`);
       if (propertyOption) propertyOption.checked = true;
     }
-    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasBattery !== undefined) {
-      const value = savedQuestionnaire.additionalInfo.hasBattery ? "sim" : "nao";
+    if (savedQuestionnaire.hasBattery !== undefined) {
+      const value = savedQuestionnaire.hasBattery ? "sim" : "nao";
       const batteryOption = batteryChoiceInputs.find((input) => input.value === value);
       if (batteryOption) batteryOption.checked = true;
     }
-    hasPool.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasPool);
-    hasAc.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasAc);
-    hasEv.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasEv);
-    hasRadiators.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasRadiators);
-    hasWaterHeater.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasWaterHeater);
-    hasAerotermia.checked = Boolean(savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.hasAerotermia);
-    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.phaseType) {
-      const phaseOption = phaseTypeInputs.find((input) => input.value === savedQuestionnaire.additionalInfo.phaseType);
+    if (savedQuestionnaire.phaseType) {
+      const phaseOption = phaseTypeInputs.find((input) => input.value === savedQuestionnaire.phaseType);
       if (phaseOption) phaseOption.checked = true;
     }
-    if (savedQuestionnaire.additionalInfo && savedQuestionnaire.additionalInfo.usageTime) {
-      const usageOption = usageTimeInputs.find((input) => input.value === savedQuestionnaire.additionalInfo.usageTime);
+    if (savedQuestionnaire.usageTime) {
+      const usageOption = usageTimeInputs.find((input) => input.value === savedQuestionnaire.usageTime);
       if (usageOption) usageOption.checked = true;
+    }
+    if (savedQuestionnaire.roofType) {
+      const roofTypeOption = roofTypeInputs.find((input) => input.value === savedQuestionnaire.roofType);
+      if (roofTypeOption) roofTypeOption.checked = true;
     }
   }
 
@@ -1604,7 +1502,6 @@
     const decPart = (decPartRaw || "").slice(0, 2);
     powerTermInput.value = decPartRaw !== undefined ? `${intPart}.${decPart}` : intPart;
   });
-  renderAdditionalSummary();
   renderPriceSlider();
 
   form.addEventListener("submit", async (event) => {
@@ -1630,7 +1527,6 @@
     const monthlyKwhForPanels = wantsBattery ? monthlyKwhEstimate : monthlyKwhCoveredEstimate;
     const requiredKwp = (monthlyKwhForPanels / productionPerPanel) * panelPower;
     const requiredKwpRounded = roundToOneDecimal(requiredKwp);
-    const additionalPanels = getAdditionalCount();
     const basePanelsNeeded = panelsFromKwp(requiredKwpRounded);
     const monthlyKwpNeeded = requiredKwpRounded;
     let totalPanelsIdeal = basePanelsNeeded;
@@ -1664,8 +1560,12 @@
       console.warn("Falha ao guardar mapa em IndexedDB:", error);
     }
     const mapSnapshotUrl = buildStaticMapUrl();
+    const roofType = roofTypeInputs.find((input) => input.checked)?.value || null;
+    const phaseType = phaseTypeInputs.find((input) => input.checked)?.value || null;
+    const usageTimeSelected = usageTimeInputs.find((input) => input.checked)?.value || null;
     const payload = {
       propertyType: formData.get("propertyType"),
+      roofType,
       priceLight: priceValueNumber,
       pricePerKwh,
       powerTerm,
@@ -1678,19 +1578,10 @@
       usageFactor,
       monthlyKwpNeeded,
       basePanelsNeeded,
-      additionalPanels,
       batteryCapacityKwh,
-      additionalInfo: {
-        hasPool: hasPool.checked,
-        hasAc: hasAc.checked,
-        hasEv: hasEv.checked,
-        hasBattery: batteryChoiceInputs.find((input) => input.checked)?.value === "sim",
-        hasRadiators: hasRadiators.checked,
-        hasWaterHeater: hasWaterHeater.checked,
-        hasAerotermia: hasAerotermia.checked,
-        phaseType: phaseTypeInputs.find((input) => input.checked)?.value || null,
-        usageTime: usageTimeInputs.find((input) => input.checked)?.value || null
-      },
+      hasBattery: wantsBattery,
+      phaseType,
+      usageTime: usageTimeSelected,
       mapSnapshotBase64: mapSnapshot ? mapSnapshot.dataUrl : null,
       mapSnapshotName: mapSnapshot ? mapSnapshot.name : null,
       mapSnapshotMime: mapSnapshot ? mapSnapshot.mime : null,
