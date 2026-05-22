@@ -163,10 +163,25 @@
       const fitPanels = Number(questionnaireData.panelsNeeded || 0);
       const idealPanels = Number(questionnaireData.panelsIdeal || 0);
       if (fitPanels > 0 && idealPanels > 0 && fitPanels < idealPanels) {
-        sumPanels.textContent = `Painéis necessários: ${fitPanels} (Possivel instalar no telhado)
-        Painéis necessários: ${idealPanels} (Ideal para cobrir consumo)`;
+        const panelPowerKw = Number(questionnaireData.panelPowerKw);
+        const fitKwpSaved = Number(questionnaireData.panelsFitKwp);
+        const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
+          : (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(fitPanels * panelPowerKw)
+            : null;
+        const idealKwpResolved =
+          (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(idealPanels * panelPowerKw) : null;
+        const fitSuffix = fitKwpResolved !== null ? ` (${fitKwpResolved.toFixed(1)} kWp)` : "";
+        const idealSuffix = idealKwpResolved !== null ? ` (${idealKwpResolved.toFixed(1)} kWp)` : "";
+        sumPanels.textContent = `Kit Solar Residencial: ${fitPanels}${fitSuffix} (Possível instalar no telhado)
+        Solução ideal: ${idealPanels}${idealSuffix} (Ideal para cobrir consumo)`;
       } else {
-        sumPanels.textContent = `Painéis necessários: ${fitPanels} painéis`;
+        const panelPowerKw = Number(questionnaireData.panelPowerKw);
+        const fitKwpSaved = Number(questionnaireData.panelsFitKwp);
+        const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
+          : (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(fitPanels * panelPowerKw)
+            : null;
+        const fitSuffix = fitKwpResolved !== null ? ` (${fitKwpResolved.toFixed(1)} kWp)` : "";
+        sumPanels.textContent = `Kit Solar Residencial: ${fitPanels}${fitSuffix}`;
       }
       sumUsage.textContent = `Maior consumo: ${usageTimeLabel}`;
       sumPhase.textContent = `Tipo de contador: ${phaseLabel}`;
@@ -321,10 +336,16 @@
             : null;
         const kwpSuffix = fitKwpResolved !== null ? ` (${fitKwpResolved.toFixed(1)} kWp)` : "";
 
-        lines.push(`Painéis: ${fitPanels}${kwpSuffix} (Possível instalar no telhado)`);
+        lines.push(`Kit Solar Residencial: ${fitPanels}${kwpSuffix} (Possível instalar no telhado)`);
         warnings.push(`No telhado é possível instalar aproximadamente ${fitPanels} painéis${kwpSuffix}. No entanto, a solução ideal prevê a instalação de ${idealPanels} painéis.`);
       } else {
-        lines.push(`Painéis necessários: ${fitPanels}`);
+        const panelPowerKw = Number(questionnaireData.panelPowerKw);
+        const fitKwpSaved = Number(questionnaireData.panelsFitKwp);
+        const fitKwpResolved = Number.isFinite(fitKwpSaved) ? fitKwpSaved
+          : (Number.isFinite(panelPowerKw) && panelPowerKw > 0) ? roundToOneDecimal(fitPanels * panelPowerKw)
+            : null;
+        const kwpSuffix = fitKwpResolved !== null ? ` (${fitKwpResolved.toFixed(1)} kWp)` : "";
+        lines.push(`Kit Solar Residencial: ${fitPanels}${kwpSuffix}`);
       }
       if (Number.isFinite(idealPanels) && idealPanels > 0 && Number.isFinite(fitPanels) && fitPanels === 0) {
         warnings.push("O telhado pode não ter área suficiente para painéis.");

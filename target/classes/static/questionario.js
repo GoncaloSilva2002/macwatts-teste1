@@ -119,6 +119,7 @@
   const usageTimeInputs = Array.from(document.querySelectorAll('input[name="usageTime"]'));
   const roofTypeInputs = Array.from(document.querySelectorAll('input[name="roofType"]'));
   let showPowerTermPopup = false;
+  let pendingOverlayRecalc = false;
 
   let roofData = loadStoredJson("roofSelection");
   let savedQuestionnaire = loadStoredJson("contactQuestionnaire");
@@ -204,7 +205,13 @@
   // Dimensões do painel e espaçamento (metros).
   const PANEL_WIDTH_M = 2.1;
   const PANEL_HEIGHT_M = 1.3;
-  const PANEL_GAP_M = 0.1;
+  const PANEL_GAP_INCLINADO_M = 0.1;
+  const PANEL_GAP_PLANO_M = 0.5;
+
+  function getPanelGapM() {
+    const roofType = roofTypeInputs.find((input) => input.checked)?.value || null;
+    return roofType === "plano" ? PANEL_GAP_PLANO_M : PANEL_GAP_INCLINADO_M;
+  }
 
   function getLatitudeZone(lat, minLat, maxLat, zoneCount = 3, labels = null) {
     if (!Number.isFinite(lat) || !Number.isFinite(minLat) || !Number.isFinite(maxLat)) {
@@ -375,7 +382,8 @@
   function estimateMaxPanelsByRoofArea() {
     const roofAreaSqm = roofData && Number.isFinite(Number(roofData.areaSqm)) ? Number(roofData.areaSqm) : null;
     if (!roofAreaSqm || roofAreaSqm <= 0) return null;
-    const panelAreaSqm = PANEL_WIDTH_M * PANEL_HEIGHT_M;
+    const gap = getPanelGapM();
+    const panelAreaSqm = (PANEL_WIDTH_M + gap) * (PANEL_HEIGHT_M + gap);
     const packingEfficiency = 0.80;
     const maxPanels = Math.floor((roofAreaSqm * packingEfficiency) / panelAreaSqm);
     return Math.max(0, maxPanels);
@@ -524,6 +532,12 @@
     const placedPanels = updatePanelOverlay(fitPanelsRequest);
     if (Number.isFinite(placedPanels) && placedPanels >= 0) {
       fitPanels = clampPanelsToAllowedCount(Math.min(fitPanelsRequest, placedPanels));
+    } else if (placedPanels === null && map && !pendingOverlayRecalc) {
+      pendingOverlayRecalc = true;
+      google.maps.event.addListenerOnce(map, "idle", () => {
+        pendingOverlayRecalc = false;
+        renderPriceSlider();
+      });
     }
 
     lastPanelsIdeal = idealPanels;
@@ -542,7 +556,8 @@
     if (panelProductionText) {
       panelProductionText.textContent = `${productionPerPanel.toFixed(0)} kWh/mês`;
     }
-    panelsNeededText.textContent = `${fitPanels} painéis`;
+    const fitKwp = roundToOneDecimal(fitPanels * panelPower);
+    panelsNeededText.textContent = `${fitPanels} painéis (${fitKwp.toFixed(1)} kWp)`;
     if (batteryCapacityText) {
       const capacity = wantsBattery ? getBatteryCapacityKwh(fitPanels) : 0;
       batteryCapacityText.textContent = capacity > 0 ? `${capacity} kWh` : "Sem bateria";
@@ -969,7 +984,7 @@
     return {
       width: Math.max(10, PANEL_WIDTH_M * pxPerMeter),
       height: Math.max(6, PANEL_HEIGHT_M * pxPerMeter),
-      gap: Math.max(2, PANEL_GAP_M * pxPerMeter)
+      gap: Math.max(2, getPanelGapM() * pxPerMeter)
     };
   }
 
@@ -1596,3 +1611,11 @@
   });
 
   window.initQuestionnaireMap = initQuestionnaireMap;
+  if (window.__questionnaireMapInitRequested) {
+    window.__questionnaireMapInitRequested = false;
+    try {
+      initQuestionnaireMap();
+    } catch (error) {
+      console.warn("Falha ao inicializar o mapa (retry):", error);
+    }
+  }

@@ -175,7 +175,7 @@
             <div>Consumo total por mês: <strong id="monthlyKwhTotalText">0.0 kWh</strong></div>
             <div>Autoconsumo Solar: <strong id="monthlyKwhCoveredText">0.0 kWh</strong></div>
             <div>Potência mínima a instalar: <strong id="monthlyKwpText">0.0 kWp</strong></div>
-            <div>Painéis: <strong id="panelsNeededText">0 painéis</strong></div>
+            <div>Kit Solar Residencial: <strong id="panelsNeededText">0 painéis</strong></div>
             <div>Capacidade de bateria: <strong id="batteryCapacityText">Sem bateria</strong></div>
             <div id="powerTermWarning" class="hint"></div>
             <div id="roofPanelsWarning" class="hint"></div>
@@ -215,6 +215,14 @@
 </div>
 
 <script src="questionario.js" defer></script>
+<script>
+  // Evita condição de corrida: o script do Google Maps (async) pode chamar o callback
+  // antes do `questionario.js` definir `window.initQuestionnaireMap`.
+  window.__questionnaireMapInitRequested = false;
+  window.initQuestionnaireMap = function () {
+    window.__questionnaireMapInitRequested = true;
+  };
+</script>
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDb_0_8iNV8ojyt8nbqXKt7SBVgWGc-qRs&callback=initQuestionnaireMap" async defer>
 </script>
 
