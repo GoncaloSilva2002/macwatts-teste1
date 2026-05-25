@@ -112,6 +112,65 @@
   const closeCamera = document.getElementById("closeCamera");
   const switchCamera = document.getElementById("switchCamera");
   const capturePhoto = document.getElementById("capturePhoto");
+
+  function clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
+  }
+
+  function ensureInfoTooltip() {
+    let tooltip = document.getElementById("infoTooltip");
+    if (tooltip) return tooltip;
+    tooltip = document.createElement("div");
+    tooltip.id = "infoTooltip";
+    tooltip.className = "info-tooltip";
+    tooltip.setAttribute("role", "dialog");
+    tooltip.setAttribute("aria-label", "Pré-visualização");
+    document.body.appendChild(tooltip);
+    return tooltip;
+  }
+
+  function showInfoTooltip(anchorEl) {
+    const imageSrc = anchorEl.getAttribute("data-info-image");
+    if (!imageSrc) return;
+    const imageAlt = anchorEl.getAttribute("data-info-alt") || "Imagem";
+
+    const tooltip = ensureInfoTooltip();
+    tooltip.innerHTML = `<img src="${imageSrc}" alt="${imageAlt}">`;
+    tooltip.style.display = "block";
+
+    const anchorRect = anchorEl.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const padding = 8;
+    const gap = 10;
+
+    const desiredLeft = anchorRect.left + anchorRect.width / 2 - tooltipRect.width / 2;
+    const left = clamp(desiredLeft, padding, window.innerWidth - tooltipRect.width - padding);
+
+    const fitsBelow = anchorRect.bottom + gap + tooltipRect.height <= window.innerHeight - padding;
+    const top = fitsBelow
+      ? anchorRect.bottom + gap
+      : Math.max(padding, anchorRect.top - gap - tooltipRect.height);
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function hideInfoTooltip() {
+    const tooltip = document.getElementById("infoTooltip");
+    if (!tooltip) return;
+    tooltip.style.display = "none";
+  }
+
+  document.querySelectorAll(".info-icon[data-info-image]").forEach((icon) => {
+    icon.addEventListener("mouseenter", () => showInfoTooltip(icon));
+    icon.addEventListener("focus", () => showInfoTooltip(icon));
+    icon.addEventListener("mouseleave", hideInfoTooltip);
+    icon.addEventListener("blur", hideInfoTooltip);
+  });
+
+  window.addEventListener("scroll", hideInfoTooltip, { passive: true });
+  window.addEventListener("resize", hideInfoTooltip);
+
   let cameraStream = null;
   let cameraFacingMode = "environment";
   const batteryChoiceInputs = Array.from(document.querySelectorAll('input[name="batteryChoice"]'));

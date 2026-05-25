@@ -324,13 +324,10 @@ form {
   outline-offset: 2px;
 }
 
-.info-content {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 10px);
-  transform: translateX(-50%);
+.info-tooltip {
+  position: fixed;
   display: none;
-  z-index: 60;
+  z-index: 9999;
   padding: 10px;
   border-radius: 12px;
   border: 1px solid #e5e7eb;
@@ -341,16 +338,11 @@ form {
   overflow: auto;
 }
 
-.info-content img {
+.info-tooltip img {
   display: block;
   width: 100%;
   height: auto;
   border-radius: 10px;
-}
-
-.info-popover:hover .info-content,
-.info-popover:focus-within .info-content {
-  display: block;
 }
 
 .options {
