@@ -163,11 +163,19 @@
             <div class="price-value" id="priceValue">0€</div>
             <input id="priceLight" name="priceLight" type="range" min="0" max="2000" step="1" value="0">
           </div>
-          <div>
-            <label class="label" for="pricePerKwh">Preço por kWh (opcional)</label>
-            <input id="pricePerKwh" name="pricePerKwh" type="text" inputmode="decimal" autocomplete="off" placeholder="0.20">
-            <div class="hint">Se não preencher, usamos 0.20€.</div>
-          </div>
+	          <div>
+	            <label class="label label-with-info" for="pricePerKwh">
+	              <span>Preço por kWh (opcional)</span>
+	              <span class="info-popover" aria-label="Exemplo na fatura">
+	                <span class="info-icon" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Ver exemplo na fatura">i</span>
+	                <span class="info-content" role="dialog" aria-label="Exemplo de onde encontrar o preço por kWh na fatura">
+	                  <img src="imagens/fatura.jpeg" alt="Exemplo na fatura: onde encontrar o preço por kWh">
+	                </span>
+	              </span>
+	            </label>
+	            <input id="pricePerKwh" name="pricePerKwh" type="text" inputmode="decimal" autocomplete="off" placeholder="0.20">
+	            <div class="hint">Se não preencher, usamos 0.20€.</div>
+	          </div>
           <div>
             <label class="label" for="powerTerm">Termo de potência (kVA)</label>
             <input id="powerTerm" name="powerTerm" type="text" inputmode="decimal" autocomplete="off" placeholder="10.35">
