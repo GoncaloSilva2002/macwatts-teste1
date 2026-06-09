@@ -992,8 +992,60 @@
     return url;
   }
 
+  function buildEmailStaticMapUrl() {
+    if (!map || !roofData || !roofData.center || !selectedRoofFaces.length) {
+      return null;
+    }
+    const center = map.getCenter();
+    const currentZoom = map.getZoom() || 0;
+    const zoom = Math.max(0, currentZoom - 2);
+    const params = [];
+    params.push(`center=${center.lat()},${center.lng()}`);
+    params.push(`zoom=${zoom}`);
+    params.push("size=640x400");
+    params.push("scale=2");
+    // Nota: Google Static Maps pode bloquear "satellite/hybrid" em contas/regiões (ex.: EEE).
+    // Usamos "roadmap" para garantir que o mapa consegue ser gerado e anexado no email.
+    params.push("maptype=roadmap");
+    params.push(`key=${GOOGLE_MAPS_KEY}`);
+
+    selectedRoofFaces.forEach((face) => {
+      const points = (face.points || []).map((point) => ({ lat: point.lat, lng: point.lng }));
+      if (points.length < 3) return;
+      const roofPath = buildPathParam({ color: "0x14b8a6ff", fillColor: "0x14b8a655", weight: 2 }, points);
+      if (roofPath) params.push(`path=${encodeURIComponent(roofPath)}`);
+    });
+
+    params.push(`markers=color:0xd97706|label:R|${roofData.center.lat},${roofData.center.lng}`);
+
+    if (panelPolygonsLatLng.length) {
+      const panelOptions = { color: "0x0b0b0bff", fillColor: "0x0b0b0bb3", weight: 1 };
+      panelPolygonsLatLng.forEach((panel) => {
+        const panelPath = buildPathParam(panelOptions, panel);
+        if (panelPath) {
+          params.push(`path=${encodeURIComponent(panelPath)}`);
+        }
+      });
+    }
+
+    let url = `https://maps.googleapis.com/maps/api/staticmap?${params.join("&")}`;
+    if (url.length > 8000 && panelPolygonsLatLng.length) {
+      const reduced = panelPolygonsLatLng.slice(0, Math.max(10, Math.floor(panelPolygonsLatLng.length / 2)));
+      const reducedParams = params.filter((param) => !param.startsWith("path=") || param.includes("14b8a6"));
+      reduced.forEach((panel) => {
+        const panelPath = buildPathParam({ color: "0x0b0b0bff", fillColor: "0x0b0b0bb3", weight: 1 }, panel);
+        if (panelPath) {
+          reducedParams.push(`path=${encodeURIComponent(panelPath)}`);
+        }
+      });
+      url = `https://maps.googleapis.com/maps/api/staticmap?${reducedParams.join("&")}`;
+    }
+
+    return url;
+  }
+
   async function generateMapSnapshot() {
-    const url = buildStaticMapUrl();
+    const url = buildEmailStaticMapUrl();
     if (!url) return null;
     try {
       const response = await fetch(url);
@@ -1630,7 +1682,7 @@
     } catch (error) {
       console.warn("Falha ao guardar mapa em IndexedDB:", error);
     }
-    const mapSnapshotUrl = buildStaticMapUrl();
+    const mapSnapshotUrl = buildEmailStaticMapUrl();
     const roofType = roofTypeInputs.find((input) => input.checked)?.value || null;
     const phaseType = phaseTypeInputs.find((input) => input.checked)?.value || null;
     const usageTimeSelected = usageTimeInputs.find((input) => input.checked)?.value || null;
