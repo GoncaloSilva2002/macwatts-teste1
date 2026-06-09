@@ -998,7 +998,7 @@
     }
     const center = map.getCenter();
     const currentZoom = map.getZoom() || 0;
-    const zoom = Math.max(0, currentZoom - 2);
+    const zoom = Math.max(0, currentZoom - 4);
     const params = [];
     params.push(`center=${center.lat()},${center.lng()}`);
     params.push(`zoom=${zoom}`);
@@ -1016,7 +1016,7 @@
       if (roofPath) params.push(`path=${encodeURIComponent(roofPath)}`);
     });
 
-    params.push(`markers=color:0xd97706|label:R|${roofData.center.lat},${roofData.center.lng}`);
+    params.push(`markers=color:red|${roofData.center.lat},${roofData.center.lng}`);
 
     if (panelPolygonsLatLng.length) {
       const panelOptions = { color: "0x0b0b0bff", fillColor: "0x0b0b0bb3", weight: 1 };
