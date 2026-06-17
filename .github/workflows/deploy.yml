@@ -42,4 +42,4 @@ jobs:
     - name: Tell ECS to pull the new code
       run: |
         # This tells your live server to restart and grab the new image
-        aws ecs update-service --cluster YOUR_CLUSTER_NAME --service YOUR_SERVICE_NAME
+        aws ecs update-service --cluster default --service simuladormacwatts-4b73 --force-new-deployment
